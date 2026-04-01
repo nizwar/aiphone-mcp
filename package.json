@@ -1,0 +1,32 @@
+{
+  "name": "aiphone-mcp",
+  "version": "1.0.0",
+  "description": "MCP server for AI-powered Android device control via ADB — aiphone project",
+  "type": "module",
+  "bin": {
+    "aiphone-mcp": "./bin/aiphone-mcp.js"
+  },
+  "files": [
+    "bin/",
+    "src/"
+  ],
+  "scripts": {
+    "start": "node bin/aiphone-mcp.js"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.10.2",
+    "fast-xml-parser": "^5.5.9",
+    "sharp": "^0.34.5"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "license": "MIT",
+  "keywords": [
+    "mcp",
+    "android",
+    "adb",
+    "automation",
+    "aiphone"
+  ]
+}

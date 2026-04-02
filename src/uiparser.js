@@ -82,9 +82,6 @@ export function parseUiXml(xmlString) {
   return elements;
 }
 
-/**
- * Parses "[x1,y1][x2,y2]" → [x1, y1, x2, y2] or null.
- */
 function parseBounds(raw) {
   const m = raw.match(/\[(\d+),(\d+)\]\[(\d+),(\d+)\]/);
   if (!m) return null;

@@ -56,7 +56,6 @@ export async function processScreenshot(inputBuffer, opts = {}) {
   };
 }
 
-/** MIME type lookup */
 export function mimeType(format) {
   switch (format) {
     case 'jpeg':

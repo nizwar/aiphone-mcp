@@ -1,15 +1,5 @@
-/**
- * ADB subprocess wrapper.
- * All calls use spawn without shell=true to prevent injection.
- */
 import { spawn } from 'child_process';
 
-/**
- * Runs an adb command and returns stdout as a string.
- * @param {string} adbPath - path to the adb binary
- * @param {string[]} args  - command arguments (NO shell interpolation)
- * @returns {Promise<string>}
- */
 export function adbRun(adbPath, args) {
   return new Promise((resolve, reject) => {
     const proc = spawn(adbPath, args, { stdio: ['ignore', 'pipe', 'pipe'] });
@@ -29,9 +19,6 @@ export function adbRun(adbPath, args) {
   });
 }
 
-/**
- * Runs adb exec-out and returns raw bytes (for screenshots).
- */
 export function adbRunBinary(adbPath, args) {
   return new Promise((resolve, reject) => {
     const proc = spawn(adbPath, args, { stdio: ['ignore', 'pipe', 'pipe'] });
@@ -51,13 +38,6 @@ export function adbRunBinary(adbPath, args) {
   });
 }
 
-// ── Device discovery ──────────────────────────────────────────────────────────
-
-/**
- * Returns list of currently online device serials.
- * @param {string} adbPath
- * @returns {Promise<string[]>}
- */
 export async function listDevices(adbPath) {
   const output = await adbRun(adbPath, ['devices']);
   const lines = output.split('\n');
@@ -73,15 +53,9 @@ export async function listDevices(adbPath) {
   return serials;
 }
 
-/**
- * Returns installed package names from pm list packages.
- * @param {string} adbPath
- * @param {string} serial
- * @returns {Promise<string[]>}
- */
 export async function listInstalledPackages(adbPath, serial) {
   validateSerial(serial);
-  const output = await adbRun(adbPath, ['-s', serial, 'shell', 'pm', 'list', 'packages']);
+  const output = await adbRun(adbPath, [...serialArgs(serial), 'shell', 'pm', 'list', 'packages']);
   const lines = output.split('\n');
   const packages = [];
   for (const line of lines) {
@@ -93,80 +67,45 @@ export async function listInstalledPackages(adbPath, serial) {
   return packages;
 }
 
-// ── Screenshot ────────────────────────────────────────────────────────────────
-
-/**
- * Takes a screenshot and returns raw PNG bytes.
- * Uses exec-out so no temp file is written on device.
- * @param {string} adbPath
- * @param {string} serial
- * @returns {Promise<Buffer>}
- */
 export async function screenshot(adbPath, serial) {
   validateSerial(serial);
-  const bytes = await adbRunBinary(adbPath, ['-s', serial, 'exec-out', 'screencap', '-p']);
+  const bytes = await adbRunBinary(adbPath, [...serialArgs(serial), 'exec-out', 'screencap', '-p']);
   return bytes;
 }
 
-// ── UI hierarchy dump ─────────────────────────────────────────────────────────
-
-/**
- * Dumps UIAutomator hierarchy and returns the raw XML string.
- * Tries /dev/tty first, falls back to file-based dump.
- * @param {string} adbPath
- * @param {string} serial
- * @param {string} devicePath - temp file path on device (fallback)
- * @returns {Promise<string>}
- */
 export async function uiDump(adbPath, serial, devicePath = '/sdcard/window_dump.xml') {
   validateSerial(serial);
   try {
-    const xml = await adbRun(adbPath, ['-s', serial, 'shell', 'uiautomator', 'dump', '/dev/tty']);
+    const xml = await adbRun(adbPath, [...serialArgs(serial), 'shell', 'uiautomator', 'dump', '/dev/tty']);
     if (xml.includes('<hierarchy')) return xml;
   } catch (_) {
     // fall through to file-based approach
   }
   // Fallback
-  await adbRun(adbPath, ['-s', serial, 'shell', 'uiautomator', 'dump', devicePath]);
-  const xml = await adbRun(adbPath, ['-s', serial, 'shell', 'cat', devicePath]);
+  await adbRun(adbPath, [...serialArgs(serial), 'shell', 'uiautomator', 'dump', devicePath]);
+  const xml = await adbRun(adbPath, [...serialArgs(serial), 'shell', 'cat', devicePath]);
   return xml;
 }
 
-// ── Actions ───────────────────────────────────────────────────────────────────
-
-/**
- * Taps the centroid of bounds [x1, y1, x2, y2].
- */
 export async function tapBounds(adbPath, serial, bounds) {
   validateSerial(serial);
   const cx = Math.floor((bounds[0] + bounds[2]) / 2);
   const cy = Math.floor((bounds[1] + bounds[3]) / 2);
-  await adbRun(adbPath, ['-s', serial, 'shell', 'input', 'tap', String(cx), String(cy)]);
+  await adbRun(adbPath, [...serialArgs(serial), 'shell', 'input', 'tap', String(cx), String(cy)]);
 }
 
-/**
- * Taps an absolute point.
- */
 export async function tapPoint(adbPath, serial, x, y) {
   validateSerial(serial);
-  await adbRun(adbPath, ['-s', serial, 'shell', 'input', 'tap', String(x), String(y)]);
+  await adbRun(adbPath, [...serialArgs(serial), 'shell', 'input', 'tap', String(x), String(y)]);
 }
 
-/**
- * Double-taps by sending two rapid taps.
- */
 export async function doubleTapPoint(adbPath, serial, x, y) {
   validateSerial(serial);
-  await adbRun(adbPath, ['-s', serial, 'shell', 'input', 'tap', String(x), String(y)]);
+  await adbRun(adbPath, [...serialArgs(serial), 'shell', 'input', 'tap', String(x), String(y)]);
   await new Promise((r) => setTimeout(r, 80));
-  await adbRun(adbPath, ['-s', serial, 'shell', 'input', 'tap', String(x), String(y)]);
+  await adbRun(adbPath, [...serialArgs(serial), 'shell', 'input', 'tap', String(x), String(y)]);
 }
 
-/**
- * Types text via ADB. Text is passed as a literal arg (no shell injection).
- * Note: ADB input text treats %s as space on some ROMs; we replace spaces
- * with %s to handle both old and new ROMs.
- */
 export async function typeText(adbPath, serial, text) {
   validateSerial(serial);
   // adb shell input text <arg> splits on spaces at the device shell level,
@@ -174,54 +113,47 @@ export async function typeText(adbPath, serial, text) {
   // command string avoids this. Single quotes inside text are escaped with
   // the POSIX '\'' technique.
   const escaped = text.replace(/'/g, `'\\''`);
-  await adbRun(adbPath, ['-s', serial, 'shell', `input text '${escaped}'`]);
+  await adbRun(adbPath, [...serialArgs(serial), 'shell', `input text '${escaped}'`]);
 }
 
-/**
- * Swipes from (x1,y1) to (x2,y2).
- */
 export async function swipe(adbPath, serial, x1, y1, x2, y2, durationMs = 300) {
   validateSerial(serial);
   await adbRun(adbPath, [
-    '-s', serial, 'shell', 'input', 'swipe',
+    ...serialArgs(serial), 'shell', 'input', 'swipe',
     String(x1), String(y1), String(x2), String(y2), String(durationMs),
   ]);
 }
 
-/**
- * Directional swipe on the screen with sensible defaults.
- * direction: 'up' | 'down' | 'left' | 'right'
- */
-export async function swipeDirection(adbPath, serial, direction, screenW = 1080, screenH = 1920) {
+export async function swipeDirection(adbPath, serial, direction, screenW = 1080, screenH = 1920, cx = null, cy = null) {
   const top = Math.round(screenH * 0.15);
   const bottom = Math.round(screenH * 0.85);
   const left = Math.round(screenW * 0.15);
   const right = Math.round(screenW * 0.85);
-  const midX = Math.floor(screenW / 2);
-  const midY = Math.floor(screenH / 2);
+  const midX = cx != null ? Math.round(cx) : Math.floor(screenW / 2);
+  const midY = cy != null ? Math.round(cy) : Math.floor(screenH / 2);
 
   switch (direction.toLowerCase()) {
     case 'down':
     case 'scroll_down':
+      // finger: bottom → top
       return swipe(adbPath, serial, midX, bottom, midX, top);
     case 'up':
     case 'scroll_up':
+      // finger: top → bottom
       return swipe(adbPath, serial, midX, top, midX, bottom);
     case 'left':
     case 'scroll_left':
-      return swipe(adbPath, serial, right, midY, left, midY);
+      // finger: left → right
+      return swipe(adbPath, serial, left, midY, right, midY);
     case 'right':
     case 'scroll_right':
-      return swipe(adbPath, serial, left, midY, right, midY);
+      // finger: right → left
+      return swipe(adbPath, serial, right, midY, left, midY);
     default:
       throw new Error(`Unknown swipe direction: "${direction}". Use up|down|left|right.`);
   }
 }
 
-/**
- * Presses a key by name or numeric keycode.
- * name: back | home | recent | enter | search | menu | delete | <number>
- */
 export async function pressKey(adbPath, serial, key) {
   validateSerial(serial);
   const keyMap = {
@@ -248,60 +180,43 @@ export async function pressKey(adbPath, serial, key) {
   if (Number.isNaN(code)) {
     throw new Error(`Unknown key "${key}". Use back|home|recent|enter|search|menu|delete|<numeric keycode>.`);
   }
-  await adbRun(adbPath, ['-s', serial, 'shell', 'input', 'keyevent', String(code)]);
+  await adbRun(adbPath, [...serialArgs(serial), 'shell', 'input', 'keyevent', String(code)]);
 }
 
-/**
- * Launches an app by Android package name.
- */
 export async function launchApp(adbPath, serial, packageName) {
   validateSerial(serial);
   if (!isValidPackageName(packageName)) {
     throw new Error(`Invalid package name: "${packageName}"`);
   }
   await adbRun(adbPath, [
-    '-s', serial, 'shell', 'monkey',
+    ...serialArgs(serial), 'shell', 'monkey',
     '-p', packageName,
     '-c', 'android.intent.category.LAUNCHER', '1',
   ]);
 }
 
-/**
- * Opens a URL via Android intent.
- */
 export async function openUrl(adbPath, serial, url) {
   validateSerial(serial);
   if (!url.startsWith('http://') && !url.startsWith('https://')) {
     throw new Error(`URL must start with http:// or https://`);
   }
   await adbRun(adbPath, [
-    '-s', serial, 'shell', 'am', 'start',
+    ...serialArgs(serial), 'shell', 'am', 'start',
     '-a', 'android.intent.action.VIEW',
     '-d', url,
   ]);
 }
 
-/**
- * Rotates device (0=portrait, 1=landscape, 2=reverse portrait, 3=reverse landscape).
- */
 export async function rotate(adbPath, serial, rotation) {
   validateSerial(serial);
   const r = Math.max(0, Math.min(3, Math.floor(rotation)));
-  await adbRun(adbPath, ['-s', serial, 'shell', 'settings', 'put', 'system', 'accelerometer_rotation', '0']);
-  await adbRun(adbPath, ['-s', serial, 'shell', 'settings', 'put', 'system', 'user_rotation', String(r)]);
+  await adbRun(adbPath, [...serialArgs(serial), 'shell', 'settings', 'put', 'system', 'accelerometer_rotation', '0']);
+  await adbRun(adbPath, [...serialArgs(serial), 'shell', 'settings', 'put', 'system', 'user_rotation', String(r)]);
 }
 
-// ── Foreground app ────────────────────────────────────────────────────────────
-
-/**
- * Returns the current foreground app info by parsing `dumpsys window`.
- * @param {string} adbPath
- * @param {string} serial
- * @returns {Promise<{currentFocus: string|null, focusedApp: string|null}>}
- */
 export async function getForegroundApp(adbPath, serial) {
   validateSerial(serial);
-  const output = await adbRun(adbPath, ['-s', serial, 'shell', 'dumpsys', 'window']);
+  const output = await adbRun(adbPath, [...serialArgs(serial), 'shell', 'dumpsys', 'window']);
   let currentFocus = null;
   let focusedApp = null;
   for (const line of output.split('\n')) {
@@ -312,31 +227,15 @@ export async function getForegroundApp(adbPath, serial) {
   return { currentFocus, focusedApp };
 }
 
-// ── Wireless ADB (TCP/IP) ────────────────────────────────────────────────────
-
-/**
- * Enables TCP/IP mode on a USB-connected device so it can be connected wirelessly.
- * Must be called while the device is still on USB.
- * @param {string} adbPath
- * @param {string} serial - USB-connected device serial
- * @param {number} port   - TCP port to listen on (default 5555)
- */
 export async function adbTcpip(adbPath, serial, port = 5555) {
   validateSerial(serial);
   const p = Math.max(1, Math.min(65535, Math.floor(port)));
-  await adbRun(adbPath, ['-s', serial, 'tcpip', String(p)]);
+  await adbRun(adbPath, [...serialArgs(serial), 'tcpip', String(p)]);
 }
 
-/**
- * Gets the device's network interfaces and IP addresses by parsing `adb shell ip route`.
- * Returns an array of { iface, network, ip } objects, one per route entry.
- * @param {string} adbPath
- * @param {string} serial
- * @returns {Promise<Array<{iface: string, network: string, ip: string}>>}
- */
 export async function getDeviceIp(adbPath, serial) {
   validateSerial(serial);
-  const output = await adbRun(adbPath, ['-s', serial, 'shell', 'ip', 'route']);
+  const output = await adbRun(adbPath, [...serialArgs(serial), 'shell', 'ip', 'route']);
   const results = [];
   for (const line of output.split('\n')) {
     const trimmed = line.trim();
@@ -356,13 +255,6 @@ export async function getDeviceIp(adbPath, serial) {
   return results;
 }
 
-/**
- * Connects to a device over TCP/IP (wireless ADB).
- * @param {string} adbPath
- * @param {string} ip
- * @param {number} port - default 5555
- * @returns {Promise<string>} raw adb connect output
- */
 export async function adbConnect(adbPath, ip, port = 5555) {
   if (!isValidIp(ip)) throw new Error(`Invalid IP address: "${ip}"`);
   const p = Math.max(1, Math.min(65535, Math.floor(port)));
@@ -370,108 +262,53 @@ export async function adbConnect(adbPath, ip, port = 5555) {
   return output.trim();
 }
 
-/**
- * Disconnects a TCP/IP ADB target (or all TCP/IP devices if target omitted).
- * @param {string} adbPath
- * @param {string} [target] - "ip:port" or omit to disconnect all
- * @returns {Promise<string>}
- */
 export async function adbDisconnect(adbPath, target) {
   const args = (target && target.trim()) ? ['disconnect', target.trim()] : ['disconnect'];
   const output = await adbRun(adbPath, args);
   return output.trim();
 }
 
-// ── App control (extended) ────────────────────────────────────────────────────
-
-/**
- * Force-stops an app by package name.
- */
 export async function forceStopApp(adbPath, serial, packageName) {
   validateSerial(serial);
   if (!isValidPackageName(packageName)) throw new Error(`Invalid package name: "${packageName}"`);
-  await adbRun(adbPath, ['-s', serial, 'shell', 'am', 'force-stop', packageName]);
+  await adbRun(adbPath, [...serialArgs(serial), 'shell', 'am', 'force-stop', packageName]);
 }
 
-/**
- * Returns true if a package is installed on the device.
- * @returns {Promise<boolean>}
- */
 export async function isAppInstalled(adbPath, serial, packageName) {
   validateSerial(serial);
   if (!isValidPackageName(packageName)) throw new Error(`Invalid package name: "${packageName}"`);
   // Pass packageName as filter arg to pm list packages to reduce output
-  const output = await adbRun(adbPath, ['-s', serial, 'shell', 'pm', 'list', 'packages', packageName]);
+  const output = await adbRun(adbPath, [...serialArgs(serial), 'shell', 'pm', 'list', 'packages', packageName]);
   return output.split('\n').some((line) => line.trim() === `package:${packageName}`);
 }
 
-// ── Screen info ───────────────────────────────────────────────────────────────
-
-/**
- * Returns the physical screen size as { width, height } by parsing `wm size`.
- */
 export async function getScreenSize(adbPath, serial) {
   validateSerial(serial);
-  const output = await adbRun(adbPath, ['-s', serial, 'shell', 'wm', 'size']);
+  const output = await adbRun(adbPath, [...serialArgs(serial), 'shell', 'wm', 'size']);
   const m = output.match(/(\d+)x(\d+)/);
   if (!m) throw new Error(`Could not parse screen size from: ${output.trim()}`);
   return { width: parseInt(m[1], 10), height: parseInt(m[2], 10) };
 }
 
-/**
- * Returns the raw UIAutomator XML string.
- * Alias for uiDump — useful when the caller wants unparsed XML.
- */
 export async function getRawUiXml(adbPath, serial, devicePath = '/sdcard/window_dump.xml') {
   return uiDump(adbPath, serial, devicePath);
 }
 
-// ── Smart input ───────────────────────────────────────────────────────────────
-
-/**
- * Selects all text in the focused field and replaces it with new text.
- * Sends CTRL+A (select all) → DEL (delete selection) → input text.
- */
 export async function clearInputAndType(adbPath, serial, text) {
   validateSerial(serial);
-  await adbRun(adbPath, ['-s', serial, 'shell', 'input', 'keyevent', '277']); // KEYCODE_CTRL_A
-  await adbRun(adbPath, ['-s', serial, 'shell', 'input', 'keyevent', '67']);  // KEYCODE_DEL
+  await adbRun(adbPath, [...serialArgs(serial), 'shell', 'input', 'keyevent', '277']); // KEYCODE_CTRL_A
+  await adbRun(adbPath, [...serialArgs(serial), 'shell', 'input', 'keyevent', '67']);  // KEYCODE_DEL
   const escaped = text.replace(/'/g, `'\\''`);
-  await adbRun(adbPath, ['-s', serial, 'shell', `input text '${escaped}'`]);
+  await adbRun(adbPath, [...serialArgs(serial), 'shell', `input text '${escaped}'`]);
 }
 
-// ── Navigation shortcuts ──────────────────────────────────────────────────────
-
-/**
- * Opens the notification shade.
- * Uses cmd statusbar (API 28+) with swipe fallback for older devices.
- */
-export async function openNotifications(adbPath, serial) {
-  validateSerial(serial);
-  try {
-    await adbRun(adbPath, ['-s', serial, 'shell', 'cmd', 'statusbar', 'expand-notifications']);
-  } catch {
-    const size = await getScreenSize(adbPath, serial).catch(() => ({ width: 1080, height: 1920 }));
-    await swipe(adbPath, serial, Math.floor(size.width / 2), 0, Math.floor(size.width / 2), Math.floor(size.height * 0.5), 400);
-  }
-}
-
-// ── Device info ───────────────────────────────────────────────────────────────
-
-/**
- * Returns comprehensive device hardware and system information.
- * Batches multiple ADB shell calls for efficiency.
- * @param {string} adbPath
- * @param {string} serial
- * @returns {Promise<object>}
- */
 export async function getDeviceInfo(adbPath, serial) {
   validateSerial(serial);
 
   // Helper: run a single getprop and return trimmed value (never throws)
   const prop = async (key) => {
     try {
-      const v = await adbRun(adbPath, ['-s', serial, 'shell', 'getprop', key]);
+      const v = await adbRun(adbPath, [...serialArgs(serial), 'shell', 'getprop', key]);
       return v.trim();
     } catch { return null; }
   };
@@ -479,12 +316,11 @@ export async function getDeviceInfo(adbPath, serial) {
   // Helper: run a shell command and return trimmed output (never throws)
   const shell = async (...cmd) => {
     try {
-      const v = await adbRun(adbPath, ['-s', serial, 'shell', ...cmd]);
+      const v = await adbRun(adbPath, [...serialArgs(serial), 'shell', ...cmd]);
       return v.trim();
     } catch { return null; }
   };
 
-  // ── Hardware / identity (parallel batch) ──────────────────────────────────
   const [
     model, brand, manufacturer, device, boardPlatform,
     androidVersion, sdkVersion, buildId, buildType, buildFingerprint,
@@ -504,7 +340,6 @@ export async function getDeviceInfo(adbPath, serial) {
     prop('ro.product.cpu.abi'),
   ]);
 
-  // ── Screen ────────────────────────────────────────────────────────────────
   const [wmSize, wmDensity] = await Promise.all([
     shell('wm', 'size'),
     shell('wm', 'density'),
@@ -512,7 +347,6 @@ export async function getDeviceInfo(adbPath, serial) {
   const sizeMatch = wmSize ? wmSize.match(/(\d+)x(\d+)/) : null;
   const densityMatch = wmDensity ? wmDensity.match(/(\d+)/) : null;
 
-  // ── Battery ───────────────────────────────────────────────────────────────
   const batteryRaw = await shell('dumpsys', 'battery');
   const battery = {};
   if (batteryRaw) {
@@ -522,7 +356,6 @@ export async function getDeviceInfo(adbPath, serial) {
     }
   }
 
-  // ── Memory ────────────────────────────────────────────────────────────────
   const memRaw = await shell('cat', '/proc/meminfo');
   const mem = {};
   if (memRaw) {
@@ -532,7 +365,6 @@ export async function getDeviceInfo(adbPath, serial) {
     }
   }
 
-  // ── Storage ───────────────────────────────────────────────────────────────
   const parseDF = (raw) => {
     if (!raw) return null;
     const lines = raw.split('\n').filter((l) => l.trim() && !l.startsWith('Filesystem'));
@@ -557,7 +389,6 @@ export async function getDeviceInfo(adbPath, serial) {
     shell('df', '/sdcard'),
   ]);
 
-  // ── Network interfaces ────────────────────────────────────────────────────
   const ipRoute = await shell('ip', 'route');
   const ifaces = [];
   if (ipRoute) {
@@ -572,7 +403,6 @@ export async function getDeviceInfo(adbPath, serial) {
     }
   }
 
-  // ── Assemble result ───────────────────────────────────────────────────────
   return {
     device: {
       model,
@@ -618,7 +448,6 @@ export async function getDeviceInfo(adbPath, serial) {
   };
 }
 
-/** Parses df size strings like "10G", "512M", "1024K", "4096" → bytes. */
 function parseDfSize(str) {
   if (!str) return null;
   const m = str.match(/^(\d+(?:\.\d+)?)([KMGTP]?)$/i);
@@ -629,29 +458,66 @@ function parseDfSize(str) {
   return Math.round(n * (mult[unit] ?? 1));
 }
 
-// ── Validation ────────────────────────────────────────────────────────────────
-
-/**
- * Guards against path traversal / injection via serial.
- * A valid ADB serial is: alphanumeric, colon, dash, underscore, dot, port.
- */
-function validateSerial(serial) {
-  if (!serial || !/^[A-Za-z0-9:.\.\-_]+$/.test(serial)) {
-    throw new Error(`Invalid device serial: "${serial}"`);
-  }
+function serialArgs(serial) {
+  if (!serial) return [];
+  if (!/^[A-Za-z0-9:.\-_]+$/.test(serial)) throw new Error(`Invalid device serial: "${serial}"`);
+  return ['-s', serial];
 }
 
-/**
- * Validates an Android package name (reverse-DNS format).
- */
+function validateSerial(serial) {
+  if (serial) serialArgs(serial);
+}
+
 function isValidPackageName(pkg) {
   return /^[a-zA-Z][a-zA-Z0-9_]*(\.[a-zA-Z][a-zA-Z0-9_]*)+$/.test(pkg);
 }
 
-/**
- * Validates an IPv4 address.
- */
 function isValidIp(ip) {
   return /^(\d{1,3}\.){3}\d{1,3}$/.test(ip) &&
     ip.split('.').every((o) => parseInt(o, 10) <= 255);
+}
+
+export async function postNotification(adbPath, serial, { title, text, tag = 'aiphone', style = 'bigtext' } = {}) {
+  validateSerial(serial);
+  if (!title || !text) throw new Error('title and text are required');
+  await adbRun(adbPath, [
+    ...serialArgs(serial), 'shell', 'cmd', 'notification', 'post',
+    '-S', style,
+    '-t', title,
+    tag,
+    text,
+  ]);
+}
+
+export async function dumpNotifications(adbPath, serial) {
+  validateSerial(serial);
+  const raw = await adbRun(adbPath, [...serialArgs(serial), 'shell', 'dumpsys', 'notification']);
+  return raw;
+}
+
+export async function setWifi(adbPath, serial, enable) {
+  validateSerial(serial);
+  await adbRun(adbPath, [...serialArgs(serial), 'shell', 'svc', 'wifi', enable ? 'enable' : 'disable']);
+}
+
+export async function setMobileData(adbPath, serial, enable) {
+  validateSerial(serial);
+  await adbRun(adbPath, [...serialArgs(serial), 'shell', 'svc', 'data', enable ? 'enable' : 'disable']);
+}
+
+export async function setAirplaneMode(adbPath, serial, enable) {
+  validateSerial(serial);
+  const value = enable ? '1' : '0';
+  await adbRun(adbPath, [...serialArgs(serial), 'shell', 'settings', 'put', 'global', 'airplane_mode_on', value]);
+  await adbRun(adbPath, [...serialArgs(serial), 'shell', 'am', 'broadcast', '-a', 'android.intent.action.AIRPLANE_MODE']);
+}
+
+export async function adbShell(adbPath, serial, command) {
+  validateSerial(serial);
+  if (!command || !command.trim()) throw new Error('command is required');
+  // Split on whitespace but preserve quoted strings
+  const parts = command.match(/(?:[^\s"']+|"[^"]*"|'[^']*')+/g);
+  if (!parts) throw new Error('could not parse command');
+  const output = await adbRun(adbPath, [...serialArgs(serial), 'shell', ...parts]);
+  return output;
 }

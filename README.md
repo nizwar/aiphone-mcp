@@ -1,73 +1,63 @@
 # aiphone-mcp
 
-A Model Context Protocol (MCP) server that enables AI assistants to control Android devices via ADB (Android Debug Bridge). The server exposes 35 tools covering screen observation, UI interaction, app lifecycle management, wireless device connectivity, and full hardware and system diagnostics.
+MCP server for controlling Android devices via ADB. Exposes tools for screenshots, UI interaction, app management, wireless ADB, and device diagnostics.
 
-Compatible with any MCP-capable client, including LM Studio, Claude Desktop, and Cursor.
+Works with any MCP-compatible client: LM Studio, Claude Desktop, Cursor, Windsurf.
 
 ---
 
 ## Features
 
-- **Screen observation** — take screenshots with automatic compression (WebP, JPEG, PNG)
-- **UI inspection and interaction** — tap, double-tap, swipe, type, and query UI elements by selector
-- **App control** — launch, force-stop, check installation status, and open URLs
-- **Wireless ADB** — enable TCP/IP mode, connect and disconnect devices over Wi-Fi
-- **Device diagnostics** — hardware identity, battery, memory, storage, and network interfaces
-- **Navigation** — home, back, notifications, recent apps
-- **State assertions** — verify foreground app and element presence with PASS/FAIL results
+- Screenshots with automatic compression (WebP, JPEG, PNG)
+- UI inspection — tap, swipe, type, find elements by selector
+- App control — launch, stop, install checks, open URLs
+- Wireless ADB over TCP/IP
+- Device info — battery, memory, storage, network interfaces
+- Navigation — home, back, recents, screen rotation
+- Notifications — post and inspect system notifications
+- Connectivity — toggle WiFi, mobile data, airplane mode 
+- Assertions — foreground app and element presence checks
+- Escape hatch — run any arbitrary `adb shell` command
 
 ---
 
-## Prerequisites
+## Requirements
 
-| Requirement | Version | Notes |
-|-------------|---------|-------|
-| Node.js | 18 or later | Required to run the server |
-| ADB | Any current | Part of [Android SDK Platform Tools](https://developer.android.com/studio/releases/platform-tools) |
-| Android device | Android 8+ | USB Debugging must be enabled |
+- Node.js 18+
+- [ADB](https://developer.android.com/studio/releases/platform-tools) in your PATH
+- Android 8+ with USB Debugging enabled
 
-**Enable USB Debugging on your device:**  
-Settings → Developer Options → USB Debugging → On
-
-If Developer Options is not visible, go to Settings → About Phone and tap Build Number seven times.
+To enable USB Debugging: Settings → About Phone → tap Build Number 7 times → Developer Options → USB Debugging.
 
 ---
 
 ## Installation
 
-### Option 1 — npx (no installation required)
-
-MCP clients can launch the server on demand using npx. No prior installation step is needed:
-
+**npx** (no install needed):
 ```bash
 npx aiphone-mcp
 ```
 
-### Option 2 — Global npm install
-
+**Global install**:
 ```bash
 npm install -g aiphone-mcp
 ```
 
-After installation, the `aiphone-mcp` binary is available directly in your PATH.
-
-### Option 3 — Local development clone
-
+**Local clone**:
 ```bash
 git clone <repository-url>
-cd AIAutomator/mcp
+cd aiphone-mcp
 npm install
-npm link          # makes aiphone-mcp available globally from this local clone
+npm link
 ```
 
 ---
 
-## MCP Client Configuration
+## Client Configuration
 
-### LM Studio
+All clients use the same config structure. The entry point is `npx aiphone-mcp`.
 
-Open the MCP servers panel and add the following entry:
-
+**LM Studio** — add to the MCP servers panel:
 ```json
 {
   "aiphone": {
@@ -77,86 +67,22 @@ Open the MCP servers panel and add the following entry:
 }
 ```
 
-### Claude Desktop
-
-Edit the configuration file at:
-- macOS: `~/Library/Application Support/Claude/claude_desktop_config.json`
-- Windows: `%APPDATA%\Claude\claude_desktop_config.json`
-
-```json
-{
-  "mcpServers": {
-    "aiphone": {
-      "command": "npx",
-      "args": ["aiphone-mcp"]
-    }
-  }
-}
-```
-
-### Cursor
-
-Add to `.cursor/mcp.json` in your project root, or to the global Cursor MCP settings:
-
-```json
-{
-  "mcpServers": {
-    "aiphone": {
-      "command": "npx",
-      "args": ["aiphone-mcp"]
-    }
-  }
-}
-```
-
-### Windsurf / Codeium
-
-Add to `~/.codeium/windsurf/mcp_config.json`:
-
-```json
-{
-  "mcpServers": {
-    "aiphone": {
-      "command": "npx",
-      "args": ["aiphone-mcp"]
-    }
-  }
-}
-```
-
-### Local clone (any client)
-
-Replace `npx` with a direct path to the binary:
-
-```json
-{
-  "aiphone": {
-    "command": "node",
-    "args": ["/absolute/path/to/AIAutomator/mcp/bin/aiphone-mcp.js"]
-  }
-}
-```
-
 ---
 
 ## Configuration
 
-The server reads optional JSON configuration files from the `config/` directory. The default location is resolved relative to the MCP project root. Override it with the `AIPHONE_CONFIG_DIR` environment variable.
+Optional config files are read from the `config/` directory (relative to the project root by default).
 
 | File | Purpose |
 |------|---------|
-| `config/app_config.json` | Ollama endpoint, model names, generation parameters |
-| `config/device_config.json` | Per-device persona and role assignments |
-| `config/personas.json` | Persona definitions used for role-play automation |
-
-### Environment Variables
+| `config/app_config.json` | Ollama endpoint and model settings |
+| `config/device_config.json` | Per-device assignments |
+| `config/personas.json` | Persona definitions |
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `AIPHONE_CONFIG_DIR` | `../config` | Path to the config directory |
-| `AIPHONE_ADB_PATH` | `adb` | Absolute path to the adb binary |
-
-Pass environment variables through your MCP client config:
+| `AIPHONE_CONFIG_DIR` | `../config` | Config directory path |
+| `AIPHONE_ADB_PATH` | `adb` | Path to adb binary |
 
 ```json
 {
@@ -165,7 +91,7 @@ Pass environment variables through your MCP client config:
     "args": ["aiphone-mcp"],
     "env": {
       "AIPHONE_ADB_PATH": "/usr/local/bin/adb",
-      "AIPHONE_CONFIG_DIR": "/absolute/path/to/config"
+      "AIPHONE_CONFIG_DIR": "/path/to/config"
     }
   }
 }
@@ -219,9 +145,9 @@ Pass environment variables through your MCP client config:
 |------|-------------|
 | `go_home` | Press the Home button |
 | `go_back` | Press the Back button |
-| `open_notifications` | Open the Android notification shade |
 | `open_recents` | Open the recent apps switcher |
 | `rotate_screen` | Set device rotation: 0=portrait, 1=landscape, 2=reverse portrait, 3=reverse landscape |
+| `delay` | Wait for a specified number of milliseconds (max 10 000) |
 
 ### App Control
 
@@ -243,62 +169,70 @@ Pass environment variables through your MCP client config:
 | `adb_connect` | Connect to a device over TCP/IP at a given IP and port |
 | `adb_disconnect` | Disconnect a wireless ADB target, or all wireless devices if no target is specified |
 
-### Configuration
+### Notifications
 
 | Tool | Description |
 |------|-------------|
-| `get_app_config` | Return the current `app_config.json` settings |
-| `list_device_configs` | Return per-device persona assignments from `device_config.json` |
+| `post_notification` | Post a system notification (`bigtext`, `inbox`, or `media` style) |
+| `dump_notifications` | Return raw `dumpsys notification` output — active notifications and history |
+
+### Connectivity
+
+| Tool | Description |
+|------|-------------|
+| `set_wifi` | Enable or disable WiFi |
+| `set_mobile_data` | Enable or disable mobile data |
+| `set_airplane_mode` | Enable or disable airplane mode |
+
+### Escape Hatch
+
+| Tool | Description |
+|------|-------------|
+| `adb_shell` | Run any arbitrary `adb shell` command — use when no other tool covers the action |
 
 ---
 
 ## Screenshot Parameters
 
-The `take_screenshot` tool accepts the following optional parameters:
-
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| `max_width` | integer | 1080 | Maximum output width in pixels (scales proportionally) |
-| `max_height` | integer | 1920 | Maximum output height in pixels (scales proportionally) |
-| `format` | string | `webp` | Output format: `webp`, `jpeg`, or `png` |
-| `quality` | integer | 75 | Compression quality 1-100 (not applicable for PNG) |
+| `max_width` | integer | 1080 | Max width in pixels (downscales proportionally) |
+| `max_height` | integer | 1920 | Max height in pixels (downscales proportionally) |
+| `format` | string | `webp` | `webp`, `jpeg`, or `png` |
+| `quality` | integer | 75 | Compression quality 1–100 (ignored for PNG) |
 
-The server never upscales images. If the device resolution is smaller than the specified limits, the image is returned at its native size.
+Images are never upscaled.
 
 ---
 
-## Selector Reference
+## Selectors
 
-Several tools accept a `selector` object to locate UI elements:
+Tools that locate elements accept a `selector` object with these fields:
 
-| Field | Match type | Example |
-|-------|-----------|---------|
-| `resourceId` | Exact match | `"com.example.app:id/search_bar"` |
-| `text` | Substring match | `"Sign in"` |
-| `contentDesc` | Substring match | `"Close button"` |
-| `className` | Exact match | `"android.widget.EditText"` |
-| `clickableOnly` | Boolean filter | `true` |
+| Field | Match | Example |
+|-------|-------|---------|
+| `resourceId` | Exact | `"com.example.app:id/search_bar"` |
+| `text` | Substring | `"Sign in"` |
+| `contentDesc` | Substring | `"Close button"` |
+| `className` | Exact | `"android.widget.EditText"` |
+| `clickableOnly` | Filter | `true` |
 
-Matching priority: `resourceId` > `text` > `contentDesc` > `className`.
+Priority: `resourceId` > `text` > `contentDesc` > `className`.
 
 ---
 
 ## Troubleshooting
 
-**No devices listed by `list_devices`**  
-Ensure USB Debugging is enabled and the device is authorized. On first connection, accept the "Allow USB Debugging" dialog on the device. Run `adb devices` in a terminal to confirm.
+**No devices found** — check that USB Debugging is enabled and the device is authorized. Run `adb devices` to verify.
 
-**`adb` not found**  
-Install the Android SDK Platform Tools and confirm `adb` is in your PATH, or set `AIPHONE_ADB_PATH` to the full binary path.
+**adb not found** — make sure `adb` is in your PATH, or set `AIPHONE_ADB_PATH` to the full binary path.
 
-**Wireless connection fails**  
-Both the host machine and the Android device must be on the same Wi-Fi network. Run `enable_wireless_adb` while the device is still connected via USB, obtain the IP with `get_device_ip`, then call `adb_connect` with that IP.
+**Wireless connection fails** — both machines must be on the same network. Run `enable_wireless_adb` while USB is still connected, get the IP with `get_device_ip`, then call `adb_connect`.
 
-**Screenshot is very large**  
-Pass `max_width: 720` and `format: "webp"` to the `take_screenshot` tool to reduce size while preserving quality suitable for vision models.
+**Screenshot too large** — use `max_width: 720, format: "webp"` to reduce output size.
 
 ---
 
 ## License
 
-MIT
+MIT. See [LICENSE](LICENSE) for the full text.

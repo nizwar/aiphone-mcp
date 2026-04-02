@@ -8,8 +8,7 @@
  *   "aiphone": { "command": "npx", "args": ["aiphone-mcp"] }
  *
  * Optional env vars:
- *   AIPHONE_CONFIG_DIR  – path to the config/ folder (default: ../config)
- *   AIPHONE_ADB_PATH    – path to adb binary      (default: adb)
+ *   AIPHONE_ADB_PATH  – path to adb binary (default: adb)
  */
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
@@ -21,17 +20,9 @@ import {
 import * as adbClient from './adb.js';
 import { parseUiXml, compactElements, findElement } from './uiparser.js';
 import { processScreenshot, mimeType } from './image.js';
-import {
-  resolveConfigDir,
-  resolveAdbPath,
-  loadAppConfig,
-  loadDeviceConfigs,
-} from './config.js';
-
 // ── Bootstrap ────────────────────────────────────────────────────────────────
 
-const CONFIG_DIR = resolveConfigDir();
-const ADB_PATH = resolveAdbPath();
+const ADB_PATH = process.env.AIPHONE_ADB_PATH || 'adb';
 
 const server = new Server(
   { name: 'aiphone-mcp', version: '1.0.0' },
@@ -55,13 +46,11 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
     {
       name: 'take_screenshot',
       description:
-        'PREFERRED for any visual task. ' +
-        'Takes a screenshot of the device screen and returns it as an optimized image you can see directly. ' +
-        'Use this FIRST when you need to: observe the current screen, verify an action worked, ' +
-        'read on-screen text or images, detect UI state, or understand layout. ' +
-        'Supports resizing (max_width / max_height) and format conversion (webp, jpeg, png). ' +
-        'Defaults to WebP 75% quality — best size/quality for vision. ' +
-        'DO NOT rely solely on get_ui_elements for visual understanding — always take a screenshot when sight matters.',
+        'Takes a screenshot of the device screen and returns it as an optimized image. ' +
+        'Use this ONLY when: (1) the user explicitly asks for a screenshot, (2) the user wants to observe visual/image content that cannot be read as text (e.g. photos, media, stories, drawings), or (3) the user asks to capture, compress, or convert the screen image. ' +
+        'Do NOT call this just to check UI state, read text, find elements, or verify actions — use get_ui_elements instead, which is faster. ' +
+        'If the information is accessible via UI elements, prefer get_ui_elements over taking a screenshot. ' +
+        'Supports max_width/max_height resizing and webp/jpeg/png output. Defaults to WebP at 75%.',
       inputSchema: {
         type: 'object',
         properties: {
@@ -91,16 +80,14 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
             default: 75,
           },
         },
-        required: ['device_id'],
+        required: [],
       },
     },
     {
       name: 'get_ui_elements',
       description:
         'Returns a structured list of interactive UI elements (id, text, content_desc, bounds, clickable flag). ' +
-        'Use this to get tap targets and element coordinates — NOT as a substitute for visual observation. ' +
-        'For understanding what is on screen visually, call take_screenshot first. ' +
-        'Best used AFTER take_screenshot to find the exact bounds of an element you want to interact with.',
+        'Use this to get tap targets and element coordinates — NOT as a substitute for visual observation. ',
       inputSchema: {
         type: 'object',
         properties: {
@@ -114,7 +101,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
             default: 30,
           },
         },
-        required: ['device_id'],
+        required: [],
       },
     },
 
@@ -123,7 +110,9 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
       name: 'tap',
       description:
         'Taps the device screen at absolute coordinates (x, y). ' +
-        'Obtain x,y from the center of an element\'s bounds returned by get_ui_elements.',
+        'Obtain x,y from the center of an element\'s bounds returned by get_ui_elements. ' +
+        'IMPORTANT: Avoid tapping profile pictures, avatars, or person thumbnails unless the user explicitly asks to view a profile image, story, or similar media. ' +
+        'For example, to open a chat/conversation, tap the conversation row (name/text area/contact name) — NOT the contact\'s avatar on the left.',
       inputSchema: {
         type: 'object',
         properties: {
@@ -131,7 +120,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
           x: { type: 'integer', description: 'X coordinate in device pixels.' },
           y: { type: 'integer', description: 'Y coordinate in device pixels.' },
         },
-        required: ['device_id', 'x', 'y'],
+        required: ['x', 'y'],
       },
     },
     {
@@ -144,13 +133,15 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
           x: { type: 'integer', description: 'X coordinate.' },
           y: { type: 'integer', description: 'Y coordinate.' },
         },
-        required: ['device_id', 'x', 'y'],
+        required: ['x', 'y'],
       },
     },
     {
       name: 'tap_element',
       description:
-        'Taps the center of a UI element identified by its bounds [x1, y1, x2, y2] from get_ui_elements.',
+        'Taps the center of a UI element identified by its bounds [x1, y1, x2, y2] from get_ui_elements. ' +
+        'IMPORTANT: Avoid tapping profile pictures, avatars, or person thumbnails unless the user explicitly asks to view a profile image, story, or similar media. ' +
+        'For example, to open a chat/conversation, tap the conversation row (name/text area/contact name) — NOT the contact\'s avatar.',
       inputSchema: {
         type: 'object',
         properties: {
@@ -163,7 +154,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
             description: 'Element bounds as [x1, y1, x2, y2].',
           },
         },
-        required: ['device_id', 'bounds'],
+        required: ['bounds'],
       },
     },
 
@@ -179,7 +170,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
           device_id: { type: 'string', description: 'ADB device serial.' },
           text: { type: 'string', description: 'Text to type.' },
         },
-        required: ['device_id', 'text'],
+        required: ['text'],
       },
     },
 
@@ -187,8 +178,9 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
     {
       name: 'swipe',
       description:
-        'Performs a swipe gesture. Use directional shortcuts (up/down/left/right) for ' +
-        'scrolling, or provide explicit coordinates for custom swipes.',
+        'Performs a swipe gesture. Use directional shortcuts (up/down/left/right) or explicit coordinates. ' +
+        'Direction finger movements: up = top→bottom, down = bottom→top, left = left→right, right = right→left. ' +
+        'Use cx to set the X column for up/down swipes, cy to set the Y row for left/right swipes.',
       inputSchema: {
         type: 'object',
         properties: {
@@ -196,7 +188,17 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
           direction: {
             type: 'string',
             enum: ['up', 'down', 'left', 'right'],
-            description: 'Directional swipe shortcut. Mutually exclusive with x1/y1/x2/y2.',
+            description:
+              'Directional swipe: up = finger top→bottom, down = finger bottom→top, ' +
+              'left = finger left→right, right = finger right→left. Mutually exclusive with x1/y1/x2/y2.',
+          },
+          cx: {
+            type: 'integer',
+            description: 'X center of the swipe for up/down directional swipes (default: screen horizontal center).',
+          },
+          cy: {
+            type: 'integer',
+            description: 'Y center of the swipe for left/right directional swipes (default: screen vertical center).',
           },
           x1: { type: 'integer', description: 'Start X (custom swipe).' },
           y1: { type: 'integer', description: 'Start Y (custom swipe).' },
@@ -208,7 +210,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
             default: 300,
           },
         },
-        required: ['device_id'],
+        required: [],
       },
     },
 
@@ -229,7 +231,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
             description: 'Key name (back|home|recent|enter|search|menu|delete|...) or numeric keycode.',
           },
         },
-        required: ['device_id', 'key'],
+        required: ['key'],
       },
     },
 
@@ -248,7 +250,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
             description: 'Android package name (e.g. com.instagram.android).',
           },
         },
-        required: ['device_id', 'package_name'],
+        required: ['package_name'],
       },
     },
     {
@@ -260,7 +262,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
           device_id: { type: 'string', description: 'ADB device serial.' },
           url: { type: 'string', description: 'Full URL starting with http:// or https://.' },
         },
-        required: ['device_id', 'url'],
+        required: ['url'],
       },
     },
     {
@@ -271,7 +273,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
         properties: {
           device_id: { type: 'string', description: 'ADB device serial.' },
         },
-        required: ['device_id'],
+        required: [],
       },
     },
 
@@ -287,22 +289,8 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
         properties: {
           device_id: { type: 'string', description: 'ADB device serial (from list_devices).' },
         },
-        required: ['device_id'],
+        required: [],
       },
-    },
-
-    // ── Config ──────────────────────────────────────────────────────────────
-    {
-      name: 'get_app_config',
-      description:
-        'Returns the current aiphone app_config.json settings (Ollama endpoints, models, ' +
-        'ADB paths, safety keywords, execution limits, etc.).',
-      inputSchema: { type: 'object', properties: {}, required: [] },
-    },
-    {
-      name: 'list_device_configs',
-      description: 'Returns per-device persona assignments stored in device_config.json.',
-      inputSchema: { type: 'object', properties: {}, required: [] },
     },
 
     // ── Wireless ADB ─────────────────────────────────────────────────────────
@@ -342,7 +330,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
           device_id: { type: 'string',  description: 'ADB device serial of the USB-connected device.' },
           port:      { type: 'integer', description: 'TCP port to listen on (default 5555).', default: 5555 },
         },
-        required: ['device_id'],
+        required: [],
       },
     },
     {
@@ -355,7 +343,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
         properties: {
           device_id: { type: 'string', description: 'ADB device serial.' },
         },
-        required: ['device_id'],
+        required: [],
       },
     },
 
@@ -369,7 +357,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
           device_id:    { type: 'string', description: 'ADB device serial.' },
           package_name: { type: 'string', description: 'Android package name (e.g. com.instagram.android).' },
         },
-        required: ['device_id', 'package_name'],
+        required: ['package_name'],
       },
     },
     {
@@ -381,7 +369,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
           device_id:    { type: 'string', description: 'ADB device serial.' },
           package_name: { type: 'string', description: 'Android package name to check.' },
         },
-        required: ['device_id', 'package_name'],
+        required: ['package_name'],
       },
     },
 
@@ -394,7 +382,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
         properties: {
           device_id: { type: 'string', description: 'ADB device serial.' },
         },
-        required: ['device_id'],
+        required: [],
       },
     },
     {
@@ -407,7 +395,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
         properties: {
           device_id: { type: 'string', description: 'ADB device serial.' },
         },
-        required: ['device_id'],
+        required: [],
       },
     },
 
@@ -434,7 +422,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
             },
           },
         },
-        required: ['device_id', 'selector'],
+        required: ['selector'],
       },
     },
     {
@@ -457,7 +445,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
             },
           },
         },
-        required: ['device_id', 'selector'],
+        required: ['selector'],
       },
     },
     {
@@ -481,7 +469,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
           },
           timeout_seconds: { type: 'number', description: 'Max wait time in seconds (default 10, max 60).', default: 10 },
         },
-        required: ['device_id', 'selector'],
+        required: ['selector'],
       },
     },
     {
@@ -505,7 +493,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
           },
           text: { type: 'string', description: 'Text to type into the field.' },
         },
-        required: ['device_id', 'selector', 'text'],
+        required: ['selector', 'text'],
       },
     },
     {
@@ -526,7 +514,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
             },
           },
         },
-        required: ['device_id', 'selector'],
+        required: ['selector'],
       },
     },
 
@@ -537,7 +525,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
       inputSchema: {
         type: 'object',
         properties: { device_id: { type: 'string', description: 'ADB device serial.' } },
-        required: ['device_id'],
+        required: [],
       },
     },
     {
@@ -546,16 +534,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
       inputSchema: {
         type: 'object',
         properties: { device_id: { type: 'string', description: 'ADB device serial.' } },
-        required: ['device_id'],
-      },
-    },
-    {
-      name: 'open_notifications',
-      description: 'Opens the Android notification shade.',
-      inputSchema: {
-        type: 'object',
-        properties: { device_id: { type: 'string', description: 'ADB device serial.' } },
-        required: ['device_id'],
+        required: [],
       },
     },
     {
@@ -564,7 +543,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
       inputSchema: {
         type: 'object',
         properties: { device_id: { type: 'string', description: 'ADB device serial.' } },
-        required: ['device_id'],
+        required: [],
       },
     },
 
@@ -580,7 +559,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
           device_id:    { type: 'string', description: 'ADB device serial.' },
           package_name: { type: 'string', description: 'Expected foreground package name.' },
         },
-        required: ['device_id', 'package_name'],
+        required: ['package_name'],
       },
     },
 
@@ -601,7 +580,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
         properties: {
           device_id: { type: 'string', description: 'ADB device serial (from list_devices).' },
         },
-        required: ['device_id'],
+        required: [],
       },
     },
 
@@ -620,7 +599,115 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
             description: '0=portrait, 1=landscape, 2=reverse portrait, 3=reverse landscape.',
           },
         },
-        required: ['device_id', 'rotation'],
+        required: ['rotation'],
+      },
+    },
+
+    // ── Timing ──────────────────────────────────────────────────────────────
+    {
+      name: 'delay',
+      description:
+        'Waits (sleeps) for a specified number of milliseconds before continuing. ' +
+        'Use this to pause between actions when the app needs time to load, animate, or settle. ' +
+        'Maximum 10 000 ms (10 seconds).',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          ms: {
+            type: 'integer',
+            description: 'Duration to wait in milliseconds (1–10 000).',
+            minimum: 1,
+            maximum: 10000,
+          },
+        },
+        required: ['ms'],
+      },
+    },
+
+    {
+      name: 'post_notification',
+      description: 'Posts a system notification on the device via `cmd notification post`.',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          device_id: { type: 'string', description: 'ADB device serial.' },
+          title: { type: 'string', description: 'Notification title.' },
+          text:  { type: 'string', description: 'Notification body text.' },
+          tag:   { type: 'string', description: 'Notification tag (default: aiphone).', default: 'aiphone' },
+          style: {
+            type: 'string',
+            enum: ['bigtext', 'inbox', 'media'],
+            description: 'Notification style (default: bigtext).',
+            default: 'bigtext',
+          },
+        },
+        required: ['title', 'text'],
+      },
+    },
+
+    {
+      name: 'dump_notifications',
+      description: 'Returns the raw output of `dumpsys notification` — active notifications, history, and listener state.',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          device_id: { type: 'string', description: 'ADB device serial.' },
+        },
+        required: [],
+      },
+    },
+
+    {
+      name: 'set_wifi',
+      description: 'Enables or disables WiFi on the device via `svc wifi`.',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          device_id: { type: 'string', description: 'ADB device serial.' },
+          enable: { type: 'boolean', description: 'true to enable, false to disable.' },
+        },
+        required: ['enable'],
+      },
+    },
+
+    {
+      name: 'set_mobile_data',
+      description: 'Enables or disables mobile data on the device via `svc data`.',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          device_id: { type: 'string', description: 'ADB device serial.' },
+          enable: { type: 'boolean', description: 'true to enable, false to disable.' },
+        },
+        required: ['enable'],
+      },
+    },
+
+    {
+      name: 'set_airplane_mode',
+      description: 'Enables or disables airplane mode. Note: on Android 8+ this may require the device to be rooted or have special permissions.',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          device_id: { type: 'string', description: 'ADB device serial.' },
+          enable: { type: 'boolean', description: 'true to enable, false to disable.' },
+        },
+        required: ['enable'],
+      },
+    },
+
+    {
+      name: 'adb_shell',
+      description:
+        'Runs an arbitrary `adb shell` command on the device. ' +
+        'Use this as a last resort when no other tool covers the needed action.',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          device_id: { type: 'string', description: 'ADB device serial.' },
+          command: { type: 'string', description: 'Shell command to run (e.g. "pm clear com.example.app").' },
+        },
+        required: ['command'],
       },
     },
   ],
@@ -645,7 +732,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
       // ── take_screenshot ───────────────────────────────────────────────────
       case 'take_screenshot': {
-        const { device_id } = requireArgs(args, ['device_id']);
+        const device_id = args?.device_id ?? null;
         const rawPng = await adbClient.screenshot(ADB_PATH, device_id);
         const result = await processScreenshot(rawPng, {
           maxWidth:  args.max_width  ?? 1080,
@@ -673,7 +760,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
       // ── get_ui_elements ───────────────────────────────────────────────────
       case 'get_ui_elements': {
-        const { device_id } = requireArgs(args, ['device_id']);
+        const device_id = args?.device_id ?? null;
         const limit = Math.min(150, Math.max(1, args.limit ?? 30));
         const xml = await adbClient.uiDump(ADB_PATH, device_id);
         const elements = parseUiXml(xml);
@@ -686,21 +773,24 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
       // ── tap ───────────────────────────────────────────────────────────────
       case 'tap': {
-        const { device_id, x, y } = requireArgs(args, ['device_id', 'x', 'y']);
+        const { x, y } = requireArgs(args, ['x', 'y']);
+        const device_id = args?.device_id ?? null;
         await adbClient.tapPoint(ADB_PATH, device_id, Number(x), Number(y));
         return text(`Tapped at (${x}, ${y}) on device ${device_id}.`);
       }
 
       // ── double_tap ────────────────────────────────────────────────────────
       case 'double_tap': {
-        const { device_id, x, y } = requireArgs(args, ['device_id', 'x', 'y']);
+        const { x, y } = requireArgs(args, ['x', 'y']);
+        const device_id = args?.device_id ?? null;
         await adbClient.doubleTapPoint(ADB_PATH, device_id, Number(x), Number(y));
         return text(`Double-tapped at (${x}, ${y}) on device ${device_id}.`);
       }
 
       // ── tap_element ───────────────────────────────────────────────────────
       case 'tap_element': {
-        const { device_id, bounds } = requireArgs(args, ['device_id', 'bounds']);
+        const { bounds } = requireArgs(args, ['bounds']);
+        const device_id = args?.device_id ?? null;
         if (!Array.isArray(bounds) || bounds.length !== 4) {
           throw new Error('bounds must be an array of 4 integers [x1, y1, x2, y2].');
         }
@@ -712,7 +802,8 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
       // ── type_text ─────────────────────────────────────────────────────────
       case 'type_text': {
-        const { device_id, text: inputText } = requireArgs(args, ['device_id', 'text']);
+        const { text: inputText } = requireArgs(args, ['text']);
+        const device_id = args?.device_id ?? null;
         if (typeof inputText !== 'string' || inputText.length === 0) {
           throw new Error('"text" must be a non-empty string.');
         }
@@ -722,11 +813,16 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
       // ── swipe ─────────────────────────────────────────────────────────────
       case 'swipe': {
-        const { device_id } = requireArgs(args, ['device_id']);
+        const device_id = args?.device_id ?? null;
         const durationMs = args.duration_ms ?? 300;
         if (args.direction) {
-          await adbClient.swipeDirection(ADB_PATH, device_id, args.direction);
-          return text(`Swiped ${args.direction} on device ${device_id}.`);
+          const swipeCx = args.cx != null ? Number(args.cx) : null;
+          const swipeCy = args.cy != null ? Number(args.cy) : null;
+          await adbClient.swipeDirection(ADB_PATH, device_id, args.direction, 1080, 1920, swipeCx, swipeCy);
+          const centerNote = swipeCx != null || swipeCy != null
+            ? ` (center: ${swipeCx ?? 'default'}, ${swipeCy ?? 'default'})`
+            : '';
+          return text(`Swiped ${args.direction}${centerNote} on device ${device_id}.`);
         }
         const { x1, y1, x2, y2 } = requireArgs(args, ['x1', 'y1', 'x2', 'y2']);
         await adbClient.swipe(ADB_PATH, device_id, Number(x1), Number(y1), Number(x2), Number(y2), Number(durationMs));
@@ -735,28 +831,31 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
       // ── press_key ─────────────────────────────────────────────────────────
       case 'press_key': {
-        const { device_id, key } = requireArgs(args, ['device_id', 'key']);
+        const { key } = requireArgs(args, ['key']);
+        const device_id = args?.device_id ?? null;
         await adbClient.pressKey(ADB_PATH, device_id, String(key));
         return text(`Pressed key "${key}" on device ${device_id}.`);
       }
 
       // ── open_app ──────────────────────────────────────────────────────────
       case 'open_app': {
-        const { device_id, package_name } = requireArgs(args, ['device_id', 'package_name']);
+        const { package_name } = requireArgs(args, ['package_name']);
+        const device_id = args?.device_id ?? null;
         await adbClient.launchApp(ADB_PATH, device_id, package_name);
         return text(`Launched app "${package_name}" on device ${device_id}.`);
       }
 
       // ── open_url ──────────────────────────────────────────────────────────
       case 'open_url': {
-        const { device_id, url } = requireArgs(args, ['device_id', 'url']);
+        const { url } = requireArgs(args, ['url']);
+        const device_id = args?.device_id ?? null;
         await adbClient.openUrl(ADB_PATH, device_id, url);
         return text(`Opened URL "${url}" on device ${device_id}.`);
       }
 
       // ── list_installed_apps ───────────────────────────────────────────────
       case 'list_installed_apps': {
-        const { device_id } = requireArgs(args, ['device_id']);
+        const device_id = args?.device_id ?? null;
         const packages = await adbClient.listInstalledPackages(ADB_PATH, device_id);
         return text(
           `Installed packages on ${device_id} (${packages.length} total):\n${packages.sort().join('\n')}`,
@@ -765,7 +864,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
       // ── get_foreground_app ────────────────────────────────────────────────
       case 'get_foreground_app': {
-        const { device_id } = requireArgs(args, ['device_id']);
+        const device_id = args?.device_id ?? null;
         const { currentFocus, focusedApp } = await adbClient.getForegroundApp(ADB_PATH, device_id);
         const lines = [
           `Foreground app on device ${device_id}:`,
@@ -775,29 +874,10 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         return text(lines.join('\n'));
       }
 
-      // ── get_app_config ────────────────────────────────────────────────────
-      case 'get_app_config': {
-        const config = loadAppConfig(CONFIG_DIR);
-        if (!config) {
-          return text(`app_config.json not found in config directory: ${CONFIG_DIR}`);
-        }
-        // Strip internal comment field
-        const { _comment, ...clean } = config;
-        return text(JSON.stringify(clean, null, 2));
-      }
-
-      // ── list_device_configs ───────────────────────────────────────────────
-      case 'list_device_configs': {
-        const configs = loadDeviceConfigs(CONFIG_DIR);
-        if (configs.length === 0) {
-          return text('No device configurations found. Devices may not have assigned personas yet.');
-        }
-        return text(JSON.stringify(configs, null, 2));
-      }
-
       // ── rotate_screen ─────────────────────────────────────────────────────
       case 'rotate_screen': {
-        const { device_id, rotation } = requireArgs(args, ['device_id', 'rotation']);
+        const { rotation } = requireArgs(args, ['rotation']);
+        const device_id = args?.device_id ?? null;
         await adbClient.rotate(ADB_PATH, device_id, Number(rotation));
         const labels = ['portrait', 'landscape', 'reverse portrait', 'reverse landscape'];
         return text(`Rotated device ${device_id} to ${labels[rotation] ?? rotation}.`);
@@ -818,7 +898,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
       // ── enable_wireless_adb ───────────────────────────────────────────────
       case 'enable_wireless_adb': {
-        const { device_id } = requireArgs(args, ['device_id']);
+        const device_id = args?.device_id ?? null;
         await adbClient.adbTcpip(ADB_PATH, device_id, Number(args.port ?? 5555));
         return text(
           `TCP/IP mode enabled on device ${device_id} (port ${args.port ?? 5555}). ` +
@@ -828,7 +908,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
       // ── get_device_ip ─────────────────────────────────────────────────────
       case 'get_device_ip': {
-        const { device_id } = requireArgs(args, ['device_id']);
+        const device_id = args?.device_id ?? null;
         const routes = await adbClient.getDeviceIp(ADB_PATH, device_id);
         if (!routes || routes.length === 0) {
           return text(`No network interfaces found on device ${device_id}. Ensure the device has an active network connection.`);
@@ -842,35 +922,38 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
       // ── force_stop_app ────────────────────────────────────────────────────
       case 'force_stop_app': {
-        const { device_id, package_name } = requireArgs(args, ['device_id', 'package_name']);
+        const { package_name } = requireArgs(args, ['package_name']);
+        const device_id = args?.device_id ?? null;
         await adbClient.forceStopApp(ADB_PATH, device_id, package_name);
         return text(`Force-stopped "${package_name}" on device ${device_id}.`);
       }
 
       // ── is_app_installed ──────────────────────────────────────────────────
       case 'is_app_installed': {
-        const { device_id, package_name } = requireArgs(args, ['device_id', 'package_name']);
+        const { package_name } = requireArgs(args, ['package_name']);
+        const device_id = args?.device_id ?? null;
         const installed = await adbClient.isAppInstalled(ADB_PATH, device_id, package_name);
         return text(`"${package_name}" is ${installed ? 'INSTALLED' : 'NOT installed'} on device ${device_id}.`);
       }
 
       // ── get_screen_size ───────────────────────────────────────────────────
       case 'get_screen_size': {
-        const { device_id } = requireArgs(args, ['device_id']);
+        const device_id = args?.device_id ?? null;
         const { width, height } = await adbClient.getScreenSize(ADB_PATH, device_id);
         return text(`Screen size of device ${device_id}: ${width} x ${height} pixels.`);
       }
 
       // ── dump_ui_xml ───────────────────────────────────────────────────────
       case 'dump_ui_xml': {
-        const { device_id } = requireArgs(args, ['device_id']);
+        const device_id = args?.device_id ?? null;
         const xml = await adbClient.getRawUiXml(ADB_PATH, device_id);
         return text(xml);
       }
 
       // ── find_element ──────────────────────────────────────────────────────
       case 'find_element': {
-        const { device_id, selector } = requireArgs(args, ['device_id', 'selector']);
+        const { selector } = requireArgs(args, ['selector']);
+        const device_id = args?.device_id ?? null;
         const el = findElement(parseUiXml(await adbClient.uiDump(ADB_PATH, device_id)), selector);
         if (!el) return text(`No element found matching selector: ${JSON.stringify(selector)}`);
         return text(`Element found:\n${JSON.stringify(el, null, 2)}`);
@@ -878,7 +961,8 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
       // ── tap_by_selector ───────────────────────────────────────────────────
       case 'tap_by_selector': {
-        const { device_id, selector } = requireArgs(args, ['device_id', 'selector']);
+        const { selector } = requireArgs(args, ['selector']);
+        const device_id = args?.device_id ?? null;
         const el = findElement(parseUiXml(await adbClient.uiDump(ADB_PATH, device_id)), selector);
         if (!el) throw new Error(`No element found matching selector: ${JSON.stringify(selector)}`);
         await adbClient.tapBounds(ADB_PATH, device_id, el.bounds);
@@ -889,7 +973,8 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
       // ── wait_for_element ──────────────────────────────────────────────────
       case 'wait_for_element': {
-        const { device_id, selector } = requireArgs(args, ['device_id', 'selector']);
+        const { selector } = requireArgs(args, ['selector']);
+        const device_id = args?.device_id ?? null;
         const timeoutSec = Math.min(60, Math.max(1, Number(args.timeout_seconds ?? 10)));
         const intervalMs = 1500;
         const deadline = Date.now() + timeoutSec * 1000;
@@ -907,7 +992,8 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
       // ── type_in_element ───────────────────────────────────────────────────
       case 'type_in_element': {
-        const { device_id, selector, text: inputText } = requireArgs(args, ['device_id', 'selector', 'text']);
+        const { selector, text: inputText } = requireArgs(args, ['selector', 'text']);
+        const device_id = args?.device_id ?? null;
         const el = findElement(parseUiXml(await adbClient.uiDump(ADB_PATH, device_id)), selector);
         if (!el) throw new Error(`No element found matching selector: ${JSON.stringify(selector)}`);
         await adbClient.tapBounds(ADB_PATH, device_id, el.bounds);
@@ -918,7 +1004,8 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
       // ── assert_element_exists ─────────────────────────────────────────────
       case 'assert_element_exists': {
-        const { device_id, selector } = requireArgs(args, ['device_id', 'selector']);
+        const { selector } = requireArgs(args, ['selector']);
+        const device_id = args?.device_id ?? null;
         const el = findElement(parseUiXml(await adbClient.uiDump(ADB_PATH, device_id)), selector);
         if (!el) return text(`FAIL: No element found matching selector: ${JSON.stringify(selector)}`);
         return text(`PASS: Element exists.\n${JSON.stringify(el, null, 2)}`);
@@ -926,35 +1013,28 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
       // ── go_home ───────────────────────────────────────────────────────────
       case 'go_home': {
-        const { device_id } = requireArgs(args, ['device_id']);
+        const device_id = args?.device_id ?? null;
         await adbClient.pressKey(ADB_PATH, device_id, 'home');
         return text(`Pressed Home on device ${device_id}.`);
       }
 
       // ── go_back ───────────────────────────────────────────────────────────
       case 'go_back': {
-        const { device_id } = requireArgs(args, ['device_id']);
+        const device_id = args?.device_id ?? null;
         await adbClient.pressKey(ADB_PATH, device_id, 'back');
         return text(`Pressed Back on device ${device_id}.`);
       }
 
-      // ── open_notifications ────────────────────────────────────────────────
-      case 'open_notifications': {
-        const { device_id } = requireArgs(args, ['device_id']);
-        await adbClient.openNotifications(ADB_PATH, device_id);
-        return text(`Opened notification shade on device ${device_id}.`);
-      }
-
       // ── open_recents ──────────────────────────────────────────────────────
       case 'open_recents': {
-        const { device_id } = requireArgs(args, ['device_id']);
+        const device_id = args?.device_id ?? null;
         await adbClient.pressKey(ADB_PATH, device_id, 'recent');
         return text(`Opened recent apps on device ${device_id}.`);
       }
 
       // ── get_device_info ────────────────────────────────────────────────────
       case 'get_device_info': {
-        const { device_id } = requireArgs(args, ['device_id']);
+        const device_id = args?.device_id ?? null;
         const info = await adbClient.getDeviceInfo(ADB_PATH, device_id);
         // Format human-readable alongside raw JSON
         const fmt = (bytes) => bytes == null ? 'N/A' : `${(bytes / 1024 / 1024).toFixed(0)} MB`;
@@ -986,7 +1066,8 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
       // ── assert_foreground_app ─────────────────────────────────────────────
       case 'assert_foreground_app': {
-        const { device_id, package_name } = requireArgs(args, ['device_id', 'package_name']);
+        const { package_name } = requireArgs(args, ['package_name']);
+        const device_id = args?.device_id ?? null;
         const { currentFocus, focusedApp } = await adbClient.getForegroundApp(ADB_PATH, device_id);
         const combined = `${currentFocus ?? ''} ${focusedApp ?? ''}`;
         const pass = combined.includes(package_name);
@@ -995,6 +1076,60 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           `  mCurrentFocus : ${currentFocus ?? '(not found)'}\n` +
           `  mFocusedApp   : ${focusedApp ?? '(not found)'}`,
         );
+      }
+
+      // ── delay ─────────────────────────────────────────────────────────────
+      case 'delay': {
+        const { ms } = requireArgs(args, ['ms']);
+        const duration = Math.min(10000, Math.max(1, Number(ms)));
+        await new Promise((r) => setTimeout(r, duration));
+        return text(`Waited ${duration} ms.`);
+      }
+
+      case 'post_notification': {
+        const { title, text: body } = requireArgs(args, ['title', 'text']);
+        const device_id = args?.device_id ?? null;
+        await adbClient.postNotification(ADB_PATH, device_id, {
+          title,
+          text: body,
+          tag:   args.tag   ?? 'aiphone',
+          style: args.style ?? 'bigtext',
+        });
+        return text(`Notification posted on device ${device_id}: "${title}" — ${body}`);
+      }
+
+      case 'dump_notifications': {
+        const device_id = args?.device_id ?? null;
+        const output = await adbClient.dumpNotifications(ADB_PATH, device_id);
+        return text(output);
+      }
+
+      case 'set_wifi': {
+        const { enable } = requireArgs(args, ['enable']);
+        const device_id = args?.device_id ?? null;
+        await adbClient.setWifi(ADB_PATH, device_id, Boolean(enable));
+        return text(`WiFi ${enable ? 'enabled' : 'disabled'} on device ${device_id}.`);
+      }
+
+      case 'set_mobile_data': {
+        const { enable } = requireArgs(args, ['enable']);
+        const device_id = args?.device_id ?? null;
+        await adbClient.setMobileData(ADB_PATH, device_id, Boolean(enable));
+        return text(`Mobile data ${enable ? 'enabled' : 'disabled'} on device ${device_id}.`);
+      }
+
+      case 'set_airplane_mode': {
+        const { enable } = requireArgs(args, ['enable']);
+        const device_id = args?.device_id ?? null;
+        await adbClient.setAirplaneMode(ADB_PATH, device_id, Boolean(enable));
+        return text(`Airplane mode ${enable ? 'enabled' : 'disabled'} on device ${device_id}.`);
+      }
+
+      case 'adb_shell': {
+        const { command } = requireArgs(args, ['command']);
+        const device_id = args?.device_id ?? null;
+        const output = await adbClient.adbShell(ADB_PATH, device_id, command);
+        return text(output || '(no output)');
       }
 
       default:

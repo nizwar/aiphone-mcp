@@ -69,15 +69,7 @@ All clients use the same config structure. The entry point is `npx aiphone-mcp`.
 ---
 
 ## Configuration
-
-Optional config files are read from the `config/` directory (relative to the project root by default).
-
-| File | Purpose |
-|------|---------|
-| `config/app_config.json` | Ollama endpoint and model settings |
-| `config/device_config.json` | Per-device assignments |
-| `config/personas.json` | Persona definitions |
-
+ 
 | Variable | Default | Description |
 |----------|---------|-------------| 
 | `AIPHONE_ADB_PATH` | `adb` | Path to adb binary |

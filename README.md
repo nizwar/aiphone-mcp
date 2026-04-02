@@ -80,8 +80,7 @@ Optional config files are read from the `config/` directory (relative to the pro
 | `config/personas.json` | Persona definitions |
 
 | Variable | Default | Description |
-|----------|---------|-------------|
-| `AIPHONE_CONFIG_DIR` | `../config` | Config directory path |
+|----------|---------|-------------| 
 | `AIPHONE_ADB_PATH` | `adb` | Path to adb binary |
 
 ```json
@@ -90,8 +89,7 @@ Optional config files are read from the `config/` directory (relative to the pro
     "command": "npx",
     "args": ["aiphone-mcp"],
     "env": {
-      "AIPHONE_ADB_PATH": "/usr/local/bin/adb",
-      "AIPHONE_CONFIG_DIR": "/path/to/config"
+      "AIPHONE_ADB_PATH": "/usr/local/bin/adb", 
     }
   }
 }

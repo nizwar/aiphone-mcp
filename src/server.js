@@ -1,15 +1,3 @@
-/**
- * aiphone-mcp — MCP server for AI-powered Android device control.
- *
- * Exposes MCP tools that mirror the Dart lib/ implementation so an LLM
- * in LM Studio (or any MCP host) can directly control Android devices via ADB.
- *
- * Usage (LM Studio config):
- *   "aiphone": { "command": "npx", "args": ["aiphone-mcp"] }
- *
- * Optional env vars:
- *   AIPHONE_ADB_PATH  – path to adb binary (default: adb)
- */
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import {
@@ -20,7 +8,7 @@ import {
 import * as adbClient from './adb.js';
 import { parseUiXml, compactElements, findElement } from './uiparser.js';
 import { processScreenshot, mimeType } from './image.js';
-// ── Bootstrap ────────────────────────────────────────────────────────────────
+
 
 const ADB_PATH = process.env.AIPHONE_ADB_PATH || 'adb';
 
@@ -29,11 +17,10 @@ const server = new Server(
   { capabilities: { tools: {} } },
 );
 
-// ── Tool definitions ─────────────────────────────────────────────────────────
+
 
 server.setRequestHandler(ListToolsRequestSchema, async () => ({
-  tools: [
-    // ── Device discovery ────────────────────────────────────────────────────
+  tools: [ 
     {
       name: 'list_devices',
       description:
@@ -41,8 +28,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
         'Call this first to discover which devices are available.',
       inputSchema: { type: 'object', properties: {}, required: [] },
     },
-
-    // ── Screen observation ──────────────────────────────────────────────────
+ 
     {
       name: 'take_screenshot',
       description:
@@ -104,8 +90,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
         required: [],
       },
     },
-
-    // ── Touch actions ───────────────────────────────────────────────────────
+ 
     {
       name: 'tap',
       description:
@@ -157,8 +142,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
         required: ['bounds'],
       },
     },
-
-    // ── Text input ──────────────────────────────────────────────────────────
+ 
     {
       name: 'type_text',
       description:
@@ -173,8 +157,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
         required: ['text'],
       },
     },
-
-    // ── Swipe / scroll ──────────────────────────────────────────────────────
+ 
     {
       name: 'swipe',
       description:
@@ -213,8 +196,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
         required: [],
       },
     },
-
-    // ── Key events ──────────────────────────────────────────────────────────
+ 
     {
       name: 'press_key',
       description:
@@ -235,7 +217,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
       },
     },
 
-    // ── App control ─────────────────────────────────────────────────────────
+    
     {
       name: 'open_app',
       description:
@@ -260,7 +242,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
         type: 'object',
         properties: {
           device_id: { type: 'string', description: 'ADB device serial.' },
-          url: { type: 'string', description: 'Full URL starting with http:// or https://.' },
+          url: { type: 'string', description: 'Full URL starting with http:// or https:// or custom scheme (e.g. myapp://path).' },
         },
         required: ['url'],
       },
@@ -277,7 +259,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
       },
     },
 
-    // ── Foreground app ───────────────────────────────────────────────────────
+    
     {
       name: 'get_foreground_app',
       description:
@@ -293,7 +275,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
       },
     },
 
-    // ── Wireless ADB ─────────────────────────────────────────────────────────
+    
     {
       name: 'adb_connect',
       description:
@@ -347,7 +329,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
       },
     },
 
-    // ── App control (extended) ───────────────────────────────────────────────
+    
     {
       name: 'force_stop_app',
       description: 'Force-stops an app by package name. Equivalent to Settings → App → Force Stop. Use to reset app state.',
@@ -373,7 +355,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
       },
     },
 
-    // ── Screen info ──────────────────────────────────────────────────────────
+    
     {
       name: 'get_screen_size',
       description: 'Returns the physical screen resolution (width x height in pixels) of the device.',
@@ -399,7 +381,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
       },
     },
 
-    // ── Element selector tools ───────────────────────────────────────────────
+    
     {
       name: 'find_element',
       description:
@@ -518,7 +500,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
       },
     },
 
-    // ── Navigation shortcuts ─────────────────────────────────────────────────
+    
     {
       name: 'go_home',
       description: 'Presses the Home button, returning to the Android home screen.',
@@ -547,7 +529,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
       },
     },
 
-    // ── State validation ─────────────────────────────────────────────────────
+    
     {
       name: 'assert_foreground_app',
       description:
@@ -563,7 +545,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
       },
     },
 
-    // ── Device info ─────────────────────────────────────────────────────────
+    
     {
       name: 'get_device_info',
       description:
@@ -584,7 +566,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
       },
     },
 
-    // ── Rotation ────────────────────────────────────────────────────────────
+    
     {
       name: 'rotate_screen',
       description:
@@ -603,7 +585,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
       },
     },
 
-    // ── Timing ──────────────────────────────────────────────────────────────
+    
     {
       name: 'delay',
       description:
@@ -713,7 +695,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
   ],
 }));
 
-// ── Tool handlers ─────────────────────────────────────────────────────────────
+
 
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
   const { name, arguments: args = {} } = request.params;
@@ -721,7 +703,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
   try {
     switch (name) {
 
-      // ── list_devices ──────────────────────────────────────────────────────
+      
       case 'list_devices': {
         const serials = await adbClient.listDevices(ADB_PATH);
         if (serials.length === 0) {
@@ -730,7 +712,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         return text(`Connected devices (${serials.length}):\n${serials.map((s, i) => `  ${i + 1}. ${s}`).join('\n')}`);
       }
 
-      // ── take_screenshot ───────────────────────────────────────────────────
+      
       case 'take_screenshot': {
         const device_id = args?.device_id ?? null;
         const rawPng = await adbClient.screenshot(ADB_PATH, device_id);
@@ -758,7 +740,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         };
       }
 
-      // ── get_ui_elements ───────────────────────────────────────────────────
+      
       case 'get_ui_elements': {
         const device_id = args?.device_id ?? null;
         const limit = Math.min(150, Math.max(1, args.limit ?? 30));
@@ -771,7 +753,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         return text(summary);
       }
 
-      // ── tap ───────────────────────────────────────────────────────────────
+      
       case 'tap': {
         const { x, y } = requireArgs(args, ['x', 'y']);
         const device_id = args?.device_id ?? null;
@@ -779,7 +761,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         return text(`Tapped at (${x}, ${y}) on device ${device_id}.`);
       }
 
-      // ── double_tap ────────────────────────────────────────────────────────
+      
       case 'double_tap': {
         const { x, y } = requireArgs(args, ['x', 'y']);
         const device_id = args?.device_id ?? null;
@@ -787,7 +769,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         return text(`Double-tapped at (${x}, ${y}) on device ${device_id}.`);
       }
 
-      // ── tap_element ───────────────────────────────────────────────────────
+      
       case 'tap_element': {
         const { bounds } = requireArgs(args, ['bounds']);
         const device_id = args?.device_id ?? null;
@@ -800,7 +782,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         return text(`Tapped element center at (${cx}, ${cy}) on device ${device_id}.`);
       }
 
-      // ── type_text ─────────────────────────────────────────────────────────
+      
       case 'type_text': {
         const { text: inputText } = requireArgs(args, ['text']);
         const device_id = args?.device_id ?? null;
@@ -811,7 +793,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         return text(`Typed ${inputText.length} character(s) on device ${device_id}.`);
       }
 
-      // ── swipe ─────────────────────────────────────────────────────────────
+      
       case 'swipe': {
         const device_id = args?.device_id ?? null;
         const durationMs = args.duration_ms ?? 300;
@@ -829,7 +811,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         return text(`Swiped (${x1},${y1}) → (${x2},${y2}) in ${durationMs}ms on device ${device_id}.`);
       }
 
-      // ── press_key ─────────────────────────────────────────────────────────
+      
       case 'press_key': {
         const { key } = requireArgs(args, ['key']);
         const device_id = args?.device_id ?? null;
@@ -837,7 +819,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         return text(`Pressed key "${key}" on device ${device_id}.`);
       }
 
-      // ── open_app ──────────────────────────────────────────────────────────
+      
       case 'open_app': {
         const { package_name } = requireArgs(args, ['package_name']);
         const device_id = args?.device_id ?? null;
@@ -845,7 +827,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         return text(`Launched app "${package_name}" on device ${device_id}.`);
       }
 
-      // ── open_url ──────────────────────────────────────────────────────────
+      
       case 'open_url': {
         const { url } = requireArgs(args, ['url']);
         const device_id = args?.device_id ?? null;
@@ -853,7 +835,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         return text(`Opened URL "${url}" on device ${device_id}.`);
       }
 
-      // ── list_installed_apps ───────────────────────────────────────────────
+      
       case 'list_installed_apps': {
         const device_id = args?.device_id ?? null;
         const packages = await adbClient.listInstalledPackages(ADB_PATH, device_id);
@@ -862,7 +844,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         );
       }
 
-      // ── get_foreground_app ────────────────────────────────────────────────
+      
       case 'get_foreground_app': {
         const device_id = args?.device_id ?? null;
         const { currentFocus, focusedApp } = await adbClient.getForegroundApp(ADB_PATH, device_id);
@@ -874,7 +856,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         return text(lines.join('\n'));
       }
 
-      // ── rotate_screen ─────────────────────────────────────────────────────
+      
       case 'rotate_screen': {
         const { rotation } = requireArgs(args, ['rotation']);
         const device_id = args?.device_id ?? null;
@@ -883,20 +865,20 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         return text(`Rotated device ${device_id} to ${labels[rotation] ?? rotation}.`);
       }
 
-      // ── adb_connect ───────────────────────────────────────────────────────
+      
       case 'adb_connect': {
         const { ip } = requireArgs(args, ['ip']);
         const result = await adbClient.adbConnect(ADB_PATH, String(ip), Number(args.port ?? 5555));
         return text(`ADB connect result: ${result}`);
       }
 
-      // ── adb_disconnect ────────────────────────────────────────────────────
+      
       case 'adb_disconnect': {
         const result = await adbClient.adbDisconnect(ADB_PATH, args.target);
         return text(`ADB disconnect result: ${result}`);
       }
 
-      // ── enable_wireless_adb ───────────────────────────────────────────────
+      
       case 'enable_wireless_adb': {
         const device_id = args?.device_id ?? null;
         await adbClient.adbTcpip(ADB_PATH, device_id, Number(args.port ?? 5555));
@@ -906,7 +888,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         );
       }
 
-      // ── get_device_ip ─────────────────────────────────────────────────────
+      
       case 'get_device_ip': {
         const device_id = args?.device_id ?? null;
         const routes = await adbClient.getDeviceIp(ADB_PATH, device_id);
@@ -920,7 +902,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         return text(lines.join('\n'));
       }
 
-      // ── force_stop_app ────────────────────────────────────────────────────
+      
       case 'force_stop_app': {
         const { package_name } = requireArgs(args, ['package_name']);
         const device_id = args?.device_id ?? null;
@@ -928,7 +910,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         return text(`Force-stopped "${package_name}" on device ${device_id}.`);
       }
 
-      // ── is_app_installed ──────────────────────────────────────────────────
+      
       case 'is_app_installed': {
         const { package_name } = requireArgs(args, ['package_name']);
         const device_id = args?.device_id ?? null;
@@ -936,21 +918,21 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         return text(`"${package_name}" is ${installed ? 'INSTALLED' : 'NOT installed'} on device ${device_id}.`);
       }
 
-      // ── get_screen_size ───────────────────────────────────────────────────
+      
       case 'get_screen_size': {
         const device_id = args?.device_id ?? null;
         const { width, height } = await adbClient.getScreenSize(ADB_PATH, device_id);
         return text(`Screen size of device ${device_id}: ${width} x ${height} pixels.`);
       }
 
-      // ── dump_ui_xml ───────────────────────────────────────────────────────
+      
       case 'dump_ui_xml': {
         const device_id = args?.device_id ?? null;
         const xml = await adbClient.getRawUiXml(ADB_PATH, device_id);
         return text(xml);
       }
 
-      // ── find_element ──────────────────────────────────────────────────────
+      
       case 'find_element': {
         const { selector } = requireArgs(args, ['selector']);
         const device_id = args?.device_id ?? null;
@@ -959,7 +941,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         return text(`Element found:\n${JSON.stringify(el, null, 2)}`);
       }
 
-      // ── tap_by_selector ───────────────────────────────────────────────────
+      
       case 'tap_by_selector': {
         const { selector } = requireArgs(args, ['selector']);
         const device_id = args?.device_id ?? null;
@@ -971,7 +953,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         return text(`Tapped "${el.text || el.contentDesc || el.id}" at (${cx}, ${cy}) on device ${device_id}.`);
       }
 
-      // ── wait_for_element ──────────────────────────────────────────────────
+      
       case 'wait_for_element': {
         const { selector } = requireArgs(args, ['selector']);
         const device_id = args?.device_id ?? null;
@@ -990,7 +972,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         return text(`Element appeared:\n${JSON.stringify(el, null, 2)}`);
       }
 
-      // ── type_in_element ───────────────────────────────────────────────────
+      
       case 'type_in_element': {
         const { selector, text: inputText } = requireArgs(args, ['selector', 'text']);
         const device_id = args?.device_id ?? null;
@@ -1002,7 +984,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         return text(`Typed into "${el.text || el.contentDesc || el.id}" on device ${device_id}.`);
       }
 
-      // ── assert_element_exists ─────────────────────────────────────────────
+      
       case 'assert_element_exists': {
         const { selector } = requireArgs(args, ['selector']);
         const device_id = args?.device_id ?? null;
@@ -1011,32 +993,32 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         return text(`PASS: Element exists.\n${JSON.stringify(el, null, 2)}`);
       }
 
-      // ── go_home ───────────────────────────────────────────────────────────
+      
       case 'go_home': {
         const device_id = args?.device_id ?? null;
         await adbClient.pressKey(ADB_PATH, device_id, 'home');
         return text(`Pressed Home on device ${device_id}.`);
       }
 
-      // ── go_back ───────────────────────────────────────────────────────────
+      
       case 'go_back': {
         const device_id = args?.device_id ?? null;
         await adbClient.pressKey(ADB_PATH, device_id, 'back');
         return text(`Pressed Back on device ${device_id}.`);
       }
 
-      // ── open_recents ──────────────────────────────────────────────────────
+      
       case 'open_recents': {
         const device_id = args?.device_id ?? null;
         await adbClient.pressKey(ADB_PATH, device_id, 'recent');
         return text(`Opened recent apps on device ${device_id}.`);
       }
 
-      // ── get_device_info ────────────────────────────────────────────────────
+      
       case 'get_device_info': {
         const device_id = args?.device_id ?? null;
         const info = await adbClient.getDeviceInfo(ADB_PATH, device_id);
-        // Format human-readable alongside raw JSON
+        
         const fmt = (bytes) => bytes == null ? 'N/A' : `${(bytes / 1024 / 1024).toFixed(0)} MB`;
         const lines = [
           `Device: ${info.device.manufacturer} ${info.device.model} (${info.device.device})`,
@@ -1064,7 +1046,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         return text(lines.join('\n'));
       }
 
-      // ── assert_foreground_app ─────────────────────────────────────────────
+      
       case 'assert_foreground_app': {
         const { package_name } = requireArgs(args, ['package_name']);
         const device_id = args?.device_id ?? null;
@@ -1078,7 +1060,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         );
       }
 
-      // ── delay ─────────────────────────────────────────────────────────────
+      
       case 'delay': {
         const { ms } = requireArgs(args, ['ms']);
         const duration = Math.min(10000, Math.max(1, Number(ms)));
@@ -1143,7 +1125,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
   }
 });
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
+
 
 function text(str) {
   return { content: [{ type: 'text', text: str }] };
@@ -1157,7 +1139,7 @@ function requireArgs(args, keys) {
   return args;
 }
 
-// ── Connect transport ─────────────────────────────────────────────────────────
+
 
 const transport = new StdioServerTransport();
 await server.connect(transport);

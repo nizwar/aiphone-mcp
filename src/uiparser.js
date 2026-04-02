@@ -1,7 +1,3 @@
-/**
- * UIAutomator XML hierarchy parser.
- * Mirrors the Dart UiAutomatorParser — produces a flat list of UiElements.
- */
 import { XMLParser } from 'fast-xml-parser';
 
 const xmlParser = new XMLParser({
@@ -11,23 +7,6 @@ const xmlParser = new XMLParser({
   allowBooleanAttributes: true,
 });
 
-/**
- * @typedef {Object} UiElement
- * @property {string} id         - "el_N"
- * @property {string} text
- * @property {string} contentDesc
- * @property {number[]} bounds   - [x1, y1, x2, y2]
- * @property {boolean} clickable
- * @property {boolean} enabled
- * @property {string|null} resourceId
- * @property {string|null} className
- */
-
-/**
- * Parses a UIAutomator XML string into a flat array of UiElement objects.
- * @param {string} xmlString
- * @returns {UiElement[]}
- */
 export function parseUiXml(xmlString) {
   if (!xmlString || !xmlString.trim()) return [];
 

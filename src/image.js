@@ -1,7 +1,4 @@
-/**
- * Image processing utilities for screenshot optimization.
- * Uses sharp for fast native resizing and format conversion.
- */
+
 import sharp from 'sharp';
 
 /**
@@ -16,16 +13,16 @@ import sharp from 'sharp';
  * @returns {Promise<{ buffer: Buffer, format: string, width: number, height: number, originalBytes: number }>}
  */
 export async function processScreenshot(inputBuffer, opts = {}) {
-  const maxWidth  = Math.max(1, Math.min(4096, Math.floor(opts.maxWidth  ?? 1080)));
+  const maxWidth = Math.max(1, Math.min(4096, Math.floor(opts.maxWidth ?? 1080)));
   const maxHeight = Math.max(1, Math.min(4096, Math.floor(opts.maxHeight ?? 1920)));
-  const quality   = Math.max(1, Math.min(100,  Math.floor(opts.quality   ?? 75)));
-  const format    = validateFormat(opts.format ?? 'webp');
+  const quality = Math.max(1, Math.min(100, Math.floor(opts.quality ?? 75)));
+  const format = validateFormat(opts.format ?? 'webp');
 
   const originalBytes = inputBuffer.length;
 
-  let pipeline = sharp(inputBuffer, { failOn: 'none' }).rotate(); // auto-orient
+  let pipeline = sharp(inputBuffer, { failOn: 'none' }).rotate();
 
-  // Only resize if the image exceeds the max dimensions (never upscale)
+
   pipeline = pipeline.resize(maxWidth, maxHeight, {
     fit: 'inside',
     withoutEnlargement: true,
@@ -40,7 +37,7 @@ export async function processScreenshot(inputBuffer, opts = {}) {
       pipeline = pipeline.jpeg({ quality, mozjpeg: true });
       break;
     case 'png':
-      // PNG compressionLevel 0–9; map quality inversely (higher quality = lower compression loss)
+
       pipeline = pipeline.png({ compressionLevel: Math.round((100 - quality) / 11) });
       break;
   }
@@ -59,10 +56,10 @@ export async function processScreenshot(inputBuffer, opts = {}) {
 export function mimeType(format) {
   switch (format) {
     case 'jpeg':
-    case 'jpg':  return 'image/jpeg';
-    case 'png':  return 'image/png';
+    case 'jpg': return 'image/jpeg';
+    case 'png': return 'image/png';
     case 'webp': return 'image/webp';
-    default:     return 'image/webp';
+    default: return 'image/webp';
   }
 }
 

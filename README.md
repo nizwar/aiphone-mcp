@@ -74,6 +74,7 @@ All clients use the same config structure. The entry point is `npx aiphone-mcp`.
 |----------|---------|-------------| 
 | `AIPHONE_ADB_PATH` | `adb` | Path to adb binary |
 
+
 ```json
 {
   "aiphone": {

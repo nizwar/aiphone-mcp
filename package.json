@@ -1,6 +1,6 @@
 {
   "name": "aiphone-mcp",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "MCP server for AI-powered Android device control via ADB — aiphone project",
   "type": "module",
   "bin": {

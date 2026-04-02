@@ -57,7 +57,6 @@ npm link
 
 All clients use the same config structure. The entry point is `npx aiphone-mcp`.
 
-**LM Studio** — add to the MCP servers panel:
 ```json
 {
   "aiphone": {

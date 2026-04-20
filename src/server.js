@@ -20,7 +20,7 @@ const server = new Server(
 
 
 server.setRequestHandler(ListToolsRequestSchema, async () => ({
-  tools: [ 
+  tools: [
     {
       name: 'list_devices',
       description:
@@ -28,15 +28,11 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
         'Call this first to discover which devices are available.',
       inputSchema: { type: 'object', properties: {}, required: [] },
     },
- 
+
     {
       name: 'take_screenshot',
       description:
-        'Takes a screenshot of the device screen and returns it as an optimized image. ' +
-        'Use this ONLY when: (1) the user explicitly asks for a screenshot, (2) the user wants to observe visual/image content that cannot be read as text (e.g. photos, media, stories, drawings), or (3) the user asks to capture, compress, or convert the screen image. ' +
-        'Do NOT call this just to check UI state, read text, find elements, or verify actions — use get_ui_elements instead, which is faster. ' +
-        'If the information is accessible via UI elements, prefer get_ui_elements over taking a screenshot. ' +
-        'Supports max_width/max_height resizing and webp/jpeg/png output. Defaults to WebP at 75%.',
+        'Takes a screenshot of the device screen and returns it as an optimized image. ',
       inputSchema: {
         type: 'object',
         properties: {
@@ -69,28 +65,27 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
         required: [],
       },
     },
-    {
-      name: 'get_ui_elements',
-      description:
-        'Returns a structured list of interactive UI elements (id, text, content_desc, bounds, clickable flag). ' +
-        'Use this to get tap targets and element coordinates — NOT as a substitute for visual observation. ',
-      inputSchema: {
-        type: 'object',
-        properties: {
-          device_id: {
-            type: 'string',
-            description: 'ADB device serial (from list_devices).',
-          },
-          limit: {
-            type: 'integer',
-            description: 'Max number of elements to return (default 30, max 150). Prioritises clickable elements.',
-            default: 30,
-          },
-        },
-        required: [],
-      },
-    },
- 
+    // {
+    //   name: 'get_ui_elements',
+    //   description:
+    //     'Returns a structured list of interactive UI elements (id, text, content_desc, bounds, clickable flag). ',
+    //   inputSchema: {
+    //     type: 'object',
+    //     properties: {
+    //       device_id: {
+    //         type: 'string',
+    //         description: 'ADB device serial (from list_devices).',
+    //       },
+    //       limit: {
+    //         type: 'integer',
+    //         description: 'Max number of elements to return (default 30, max 150). Prioritises clickable elements.',
+    //         default: 30,
+    //       },
+    //     },
+    //     required: [],
+    //   },
+    // },
+
     {
       name: 'tap',
       description:
@@ -142,7 +137,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
         required: ['bounds'],
       },
     },
- 
+
     {
       name: 'type_text',
       description:
@@ -157,7 +152,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
         required: ['text'],
       },
     },
- 
+
     {
       name: 'swipe',
       description:
@@ -196,7 +191,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
         required: [],
       },
     },
- 
+
     {
       name: 'press_key',
       description:
@@ -217,7 +212,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
       },
     },
 
-    
+
     {
       name: 'open_app',
       description:
@@ -259,7 +254,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
       },
     },
 
-    
+
     {
       name: 'get_foreground_app',
       description:
@@ -275,7 +270,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
       },
     },
 
-    
+
     {
       name: 'adb_connect',
       description:
@@ -284,7 +279,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
       inputSchema: {
         type: 'object',
         properties: {
-          ip:   { type: 'string',  description: 'Device IP address (e.g. 192.168.1.42).' },
+          ip: { type: 'string', description: 'Device IP address (e.g. 192.168.1.42).' },
           port: { type: 'integer', description: 'ADB TCP port (default 5555).', default: 5555 },
         },
         required: ['ip'],
@@ -309,8 +304,8 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
       inputSchema: {
         type: 'object',
         properties: {
-          device_id: { type: 'string',  description: 'ADB device serial of the USB-connected device.' },
-          port:      { type: 'integer', description: 'TCP port to listen on (default 5555).', default: 5555 },
+          device_id: { type: 'string', description: 'ADB device serial of the USB-connected device.' },
+          port: { type: 'integer', description: 'TCP port to listen on (default 5555).', default: 5555 },
         },
         required: [],
       },
@@ -329,14 +324,14 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
       },
     },
 
-    
+
     {
       name: 'force_stop_app',
       description: 'Force-stops an app by package name. Equivalent to Settings → App → Force Stop. Use to reset app state.',
       inputSchema: {
         type: 'object',
         properties: {
-          device_id:    { type: 'string', description: 'ADB device serial.' },
+          device_id: { type: 'string', description: 'ADB device serial.' },
           package_name: { type: 'string', description: 'Android package name (e.g. com.instagram.android).' },
         },
         required: ['package_name'],
@@ -348,14 +343,14 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
       inputSchema: {
         type: 'object',
         properties: {
-          device_id:    { type: 'string', description: 'ADB device serial.' },
+          device_id: { type: 'string', description: 'ADB device serial.' },
           package_name: { type: 'string', description: 'Android package name to check.' },
         },
         required: ['package_name'],
       },
     },
 
-    
+
     {
       name: 'get_screen_size',
       description: 'Returns the physical screen resolution (width x height in pixels) of the device.',
@@ -381,7 +376,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
       },
     },
 
-    
+
     {
       name: 'find_element',
       description:
@@ -396,11 +391,11 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
             type: 'object',
             description: 'Selector — provide one or more fields.',
             properties: {
-              text:         { type: 'string',  description: 'Substring match against element text.' },
-              resourceId:   { type: 'string',  description: 'Exact match against resource-id (e.g. com.app:id/login_button).' },
-              contentDesc:  { type: 'string',  description: 'Substring match against content-desc.' },
-              className:    { type: 'string',  description: 'Exact match against class (e.g. android.widget.Button).' },
-              clickableOnly:{ type: 'boolean', description: 'If true, only match clickable elements.' },
+              text: { type: 'string', description: 'Substring match against element text.' },
+              resourceId: { type: 'string', description: 'Exact match against resource-id (e.g. com.app:id/login_button).' },
+              contentDesc: { type: 'string', description: 'Substring match against content-desc.' },
+              className: { type: 'string', description: 'Exact match against class (e.g. android.widget.Button).' },
+              clickableOnly: { type: 'boolean', description: 'If true, only match clickable elements.' },
             },
           },
         },
@@ -410,8 +405,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
     {
       name: 'tap_by_selector',
       description:
-        'Finds a UI element by selector then taps its center. ' +
-        'Preferred over raw tap when element text or resource-id is known.',
+        'Finds a UI element by selector then taps its center. ',
       inputSchema: {
         type: 'object',
         properties: {
@@ -419,37 +413,13 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
           selector: {
             type: 'object',
             properties: {
-              text:         { type: 'string' },
-              resourceId:   { type: 'string' },
-              contentDesc:  { type: 'string' },
-              className:    { type: 'string' },
-              clickableOnly:{ type: 'boolean' },
+              text: { type: 'string' },
+              resourceId: { type: 'string' },
+              contentDesc: { type: 'string' },
+              className: { type: 'string' },
+              clickableOnly: { type: 'boolean' },
             },
           },
-        },
-        required: ['selector'],
-      },
-    },
-    {
-      name: 'wait_for_element',
-      description:
-        'Polls the UI hierarchy until an element matching the selector appears, or times out. ' +
-        'Use after actions that trigger loading, navigation, or animations.',
-      inputSchema: {
-        type: 'object',
-        properties: {
-          device_id: { type: 'string', description: 'ADB device serial.' },
-          selector: {
-            type: 'object',
-            properties: {
-              text:         { type: 'string' },
-              resourceId:   { type: 'string' },
-              contentDesc:  { type: 'string' },
-              className:    { type: 'string' },
-              clickableOnly:{ type: 'boolean' },
-            },
-          },
-          timeout_seconds: { type: 'number', description: 'Max wait time in seconds (default 10, max 60).', default: 10 },
         },
         required: ['selector'],
       },
@@ -467,10 +437,10 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
             type: 'object',
             description: 'Selector for the input field.',
             properties: {
-              text:        { type: 'string' },
-              resourceId:  { type: 'string' },
+              text: { type: 'string' },
+              resourceId: { type: 'string' },
               contentDesc: { type: 'string' },
-              className:   { type: 'string' },
+              className: { type: 'string' },
             },
           },
           text: { type: 'string', description: 'Text to type into the field.' },
@@ -488,11 +458,11 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
           selector: {
             type: 'object',
             properties: {
-              text:         { type: 'string' },
-              resourceId:   { type: 'string' },
-              contentDesc:  { type: 'string' },
-              className:    { type: 'string' },
-              clickableOnly:{ type: 'boolean' },
+              text: { type: 'string' },
+              resourceId: { type: 'string' },
+              contentDesc: { type: 'string' },
+              className: { type: 'string' },
+              clickableOnly: { type: 'boolean' },
             },
           },
         },
@@ -500,7 +470,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
       },
     },
 
-    
+
     {
       name: 'go_home',
       description: 'Presses the Home button, returning to the Android home screen.',
@@ -529,7 +499,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
       },
     },
 
-    
+
     {
       name: 'assert_foreground_app',
       description:
@@ -538,14 +508,14 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
       inputSchema: {
         type: 'object',
         properties: {
-          device_id:    { type: 'string', description: 'ADB device serial.' },
+          device_id: { type: 'string', description: 'ADB device serial.' },
           package_name: { type: 'string', description: 'Expected foreground package name.' },
         },
         required: ['package_name'],
       },
     },
 
-    
+
     {
       name: 'get_device_info',
       description:
@@ -566,7 +536,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
       },
     },
 
-    
+
     {
       name: 'rotate_screen',
       description:
@@ -577,7 +547,6 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
           device_id: { type: 'string', description: 'ADB device serial.' },
           rotation: {
             type: 'integer',
-            enum: [0, 1, 2, 3],
             description: '0=portrait, 1=landscape, 2=reverse portrait, 3=reverse landscape.',
           },
         },
@@ -585,26 +554,6 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
       },
     },
 
-    
-    {
-      name: 'delay',
-      description:
-        'Waits (sleeps) for a specified number of milliseconds before continuing. ' +
-        'Use this to pause between actions when the app needs time to load, animate, or settle. ' +
-        'Maximum 10 000 ms (10 seconds).',
-      inputSchema: {
-        type: 'object',
-        properties: {
-          ms: {
-            type: 'integer',
-            description: 'Duration to wait in milliseconds (1–10 000).',
-            minimum: 1,
-            maximum: 10000,
-          },
-        },
-        required: ['ms'],
-      },
-    },
 
     {
       name: 'post_notification',
@@ -614,8 +563,8 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
         properties: {
           device_id: { type: 'string', description: 'ADB device serial.' },
           title: { type: 'string', description: 'Notification title.' },
-          text:  { type: 'string', description: 'Notification body text.' },
-          tag:   { type: 'string', description: 'Notification tag (default: aiphone).', default: 'aiphone' },
+          text: { type: 'string', description: 'Notification body text.' },
+          tag: { type: 'string', description: 'Notification tag (default: aiphone).', default: 'aiphone' },
           style: {
             type: 'string',
             enum: ['bigtext', 'inbox', 'media'],
@@ -692,6 +641,95 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
         required: ['command'],
       },
     },
+
+    {
+      name: 'long_press',
+      description: 'Long-presses the device screen at absolute coordinates (x, y) for a given duration.',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          device_id: { type: 'string', description: 'ADB device serial.' },
+          x: { type: 'integer', description: 'X coordinate in device pixels.' },
+          y: { type: 'integer', description: 'Y coordinate in device pixels.' },
+          duration_ms: {
+            type: 'integer',
+            description: 'Duration of the press in milliseconds (default 1000).',
+            default: 1000,
+          },
+        },
+        required: ['x', 'y'],
+      },
+    },
+
+    {
+      name: 'clear_text',
+      description:
+        'Clears text in the currently focused input field by selecting all (Ctrl+A) then deleting. ' +
+        'Tap the target field first to focus it.',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          device_id: { type: 'string', description: 'ADB device serial.' },
+        },
+        required: [],
+      },
+    },
+
+    {
+      name: 'get_input_method',
+      description: 'Returns the currently active input method (IME) on the device.',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          device_id: { type: 'string', description: 'ADB device serial.' },
+        },
+        required: [],
+      },
+    },
+
+    {
+      name: 'set_input_method',
+      description:
+        'Switches the active input method (IME) on the device. ' +
+        'Use get_input_method to save the current IME before switching, then restore it afterwards.',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          device_id: { type: 'string', description: 'ADB device serial.' },
+          ime: {
+            type: 'string',
+            description: 'IME component name (e.g. com.android.adbkeyboard/.AdbIME).',
+          },
+        },
+        required: ['ime'],
+      },
+    },
+
+    {
+      name: 'is_connected',
+      description:
+        'Checks whether a device is currently connected and authorized via ADB. ' +
+        'Omit device_id to check if any device is connected.',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          device_id: { type: 'string', description: 'ADB device serial to check. Omit to check for any connected device.' },
+        },
+        required: [],
+      },
+    },
+
+    {
+      name: 'restart_adb_server',
+      description:
+        'Restarts the local ADB server (kill-server then start-server). ' +
+        'Use when ADB is unresponsive or devices are not being detected.',
+      inputSchema: {
+        type: 'object',
+        properties: {},
+        required: [],
+      },
+    },
   ],
 }));
 
@@ -703,7 +741,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
   try {
     switch (name) {
 
-      
+
       case 'list_devices': {
         const serials = await adbClient.listDevices(ADB_PATH);
         if (serials.length === 0) {
@@ -712,15 +750,15 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         return text(`Connected devices (${serials.length}):\n${serials.map((s, i) => `  ${i + 1}. ${s}`).join('\n')}`);
       }
 
-      
+
       case 'take_screenshot': {
         const device_id = args?.device_id ?? null;
         const rawPng = await adbClient.screenshot(ADB_PATH, device_id);
         const result = await processScreenshot(rawPng, {
-          maxWidth:  args.max_width  ?? 1080,
+          maxWidth: args.max_width ?? 1080,
           maxHeight: args.max_height ?? 1920,
-          format:    args.format     ?? 'webp',
-          quality:   args.quality    ?? 75,
+          format: args.format ?? 'webp',
+          quality: args.quality ?? 75,
         });
         const b64 = result.buffer.toString('base64');
         const saved = Math.round((1 - result.buffer.length / result.originalBytes) * 100);
@@ -740,7 +778,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         };
       }
 
-      
+
       case 'get_ui_elements': {
         const device_id = args?.device_id ?? null;
         const limit = Math.min(150, Math.max(1, args.limit ?? 30));
@@ -753,7 +791,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         return text(summary);
       }
 
-      
+
       case 'tap': {
         const { x, y } = requireArgs(args, ['x', 'y']);
         const device_id = args?.device_id ?? null;
@@ -761,7 +799,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         return text(`Tapped at (${x}, ${y}) on device ${device_id}.`);
       }
 
-      
+
       case 'double_tap': {
         const { x, y } = requireArgs(args, ['x', 'y']);
         const device_id = args?.device_id ?? null;
@@ -769,7 +807,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         return text(`Double-tapped at (${x}, ${y}) on device ${device_id}.`);
       }
 
-      
+
       case 'tap_element': {
         const { bounds } = requireArgs(args, ['bounds']);
         const device_id = args?.device_id ?? null;
@@ -782,7 +820,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         return text(`Tapped element center at (${cx}, ${cy}) on device ${device_id}.`);
       }
 
-      
+
       case 'type_text': {
         const { text: inputText } = requireArgs(args, ['text']);
         const device_id = args?.device_id ?? null;
@@ -793,7 +831,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         return text(`Typed ${inputText.length} character(s) on device ${device_id}.`);
       }
 
-      
+
       case 'swipe': {
         const device_id = args?.device_id ?? null;
         const durationMs = args.duration_ms ?? 300;
@@ -811,7 +849,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         return text(`Swiped (${x1},${y1}) → (${x2},${y2}) in ${durationMs}ms on device ${device_id}.`);
       }
 
-      
+
       case 'press_key': {
         const { key } = requireArgs(args, ['key']);
         const device_id = args?.device_id ?? null;
@@ -819,7 +857,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         return text(`Pressed key "${key}" on device ${device_id}.`);
       }
 
-      
+
       case 'open_app': {
         const { package_name } = requireArgs(args, ['package_name']);
         const device_id = args?.device_id ?? null;
@@ -827,7 +865,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         return text(`Launched app "${package_name}" on device ${device_id}.`);
       }
 
-      
+
       case 'open_url': {
         const { url } = requireArgs(args, ['url']);
         const device_id = args?.device_id ?? null;
@@ -835,7 +873,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         return text(`Opened URL "${url}" on device ${device_id}.`);
       }
 
-      
+
       case 'list_installed_apps': {
         const device_id = args?.device_id ?? null;
         const packages = await adbClient.listInstalledPackages(ADB_PATH, device_id);
@@ -844,7 +882,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         );
       }
 
-      
+
       case 'get_foreground_app': {
         const device_id = args?.device_id ?? null;
         const { currentFocus, focusedApp } = await adbClient.getForegroundApp(ADB_PATH, device_id);
@@ -856,7 +894,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         return text(lines.join('\n'));
       }
 
-      
+
       case 'rotate_screen': {
         const { rotation } = requireArgs(args, ['rotation']);
         const device_id = args?.device_id ?? null;
@@ -865,20 +903,20 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         return text(`Rotated device ${device_id} to ${labels[rotation] ?? rotation}.`);
       }
 
-      
+
       case 'adb_connect': {
         const { ip } = requireArgs(args, ['ip']);
         const result = await adbClient.adbConnect(ADB_PATH, String(ip), Number(args.port ?? 5555));
         return text(`ADB connect result: ${result}`);
       }
 
-      
+
       case 'adb_disconnect': {
         const result = await adbClient.adbDisconnect(ADB_PATH, args.target);
         return text(`ADB disconnect result: ${result}`);
       }
 
-      
+
       case 'enable_wireless_adb': {
         const device_id = args?.device_id ?? null;
         await adbClient.adbTcpip(ADB_PATH, device_id, Number(args.port ?? 5555));
@@ -888,7 +926,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         );
       }
 
-      
+
       case 'get_device_ip': {
         const device_id = args?.device_id ?? null;
         const routes = await adbClient.getDeviceIp(ADB_PATH, device_id);
@@ -902,7 +940,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         return text(lines.join('\n'));
       }
 
-      
+
       case 'force_stop_app': {
         const { package_name } = requireArgs(args, ['package_name']);
         const device_id = args?.device_id ?? null;
@@ -910,7 +948,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         return text(`Force-stopped "${package_name}" on device ${device_id}.`);
       }
 
-      
+
       case 'is_app_installed': {
         const { package_name } = requireArgs(args, ['package_name']);
         const device_id = args?.device_id ?? null;
@@ -918,21 +956,21 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         return text(`"${package_name}" is ${installed ? 'INSTALLED' : 'NOT installed'} on device ${device_id}.`);
       }
 
-      
+
       case 'get_screen_size': {
         const device_id = args?.device_id ?? null;
         const { width, height } = await adbClient.getScreenSize(ADB_PATH, device_id);
         return text(`Screen size of device ${device_id}: ${width} x ${height} pixels.`);
       }
 
-      
+
       case 'dump_ui_xml': {
         const device_id = args?.device_id ?? null;
         const xml = await adbClient.getRawUiXml(ADB_PATH, device_id);
         return text(xml);
       }
 
-      
+
       case 'find_element': {
         const { selector } = requireArgs(args, ['selector']);
         const device_id = args?.device_id ?? null;
@@ -941,7 +979,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         return text(`Element found:\n${JSON.stringify(el, null, 2)}`);
       }
 
-      
+
       case 'tap_by_selector': {
         const { selector } = requireArgs(args, ['selector']);
         const device_id = args?.device_id ?? null;
@@ -953,7 +991,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         return text(`Tapped "${el.text || el.contentDesc || el.id}" at (${cx}, ${cy}) on device ${device_id}.`);
       }
 
-      
+
       case 'wait_for_element': {
         const { selector } = requireArgs(args, ['selector']);
         const device_id = args?.device_id ?? null;
@@ -972,7 +1010,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         return text(`Element appeared:\n${JSON.stringify(el, null, 2)}`);
       }
 
-      
+
       case 'type_in_element': {
         const { selector, text: inputText } = requireArgs(args, ['selector', 'text']);
         const device_id = args?.device_id ?? null;
@@ -984,7 +1022,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         return text(`Typed into "${el.text || el.contentDesc || el.id}" on device ${device_id}.`);
       }
 
-      
+
       case 'assert_element_exists': {
         const { selector } = requireArgs(args, ['selector']);
         const device_id = args?.device_id ?? null;
@@ -993,32 +1031,32 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         return text(`PASS: Element exists.\n${JSON.stringify(el, null, 2)}`);
       }
 
-      
+
       case 'go_home': {
         const device_id = args?.device_id ?? null;
         await adbClient.pressKey(ADB_PATH, device_id, 'home');
         return text(`Pressed Home on device ${device_id}.`);
       }
 
-      
+
       case 'go_back': {
         const device_id = args?.device_id ?? null;
         await adbClient.pressKey(ADB_PATH, device_id, 'back');
         return text(`Pressed Back on device ${device_id}.`);
       }
 
-      
+
       case 'open_recents': {
         const device_id = args?.device_id ?? null;
         await adbClient.pressKey(ADB_PATH, device_id, 'recent');
         return text(`Opened recent apps on device ${device_id}.`);
       }
 
-      
+
       case 'get_device_info': {
         const device_id = args?.device_id ?? null;
         const info = await adbClient.getDeviceInfo(ADB_PATH, device_id);
-        
+
         const fmt = (bytes) => bytes == null ? 'N/A' : `${(bytes / 1024 / 1024).toFixed(0)} MB`;
         const lines = [
           `Device: ${info.device.manufacturer} ${info.device.model} (${info.device.device})`,
@@ -1046,7 +1084,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         return text(lines.join('\n'));
       }
 
-      
+
       case 'assert_foreground_app': {
         const { package_name } = requireArgs(args, ['package_name']);
         const device_id = args?.device_id ?? null;
@@ -1060,13 +1098,6 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         );
       }
 
-      
-      case 'delay': {
-        const { ms } = requireArgs(args, ['ms']);
-        const duration = Math.min(10000, Math.max(1, Number(ms)));
-        await new Promise((r) => setTimeout(r, duration));
-        return text(`Waited ${duration} ms.`);
-      }
 
       case 'post_notification': {
         const { title, text: body } = requireArgs(args, ['title', 'text']);
@@ -1074,7 +1105,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         await adbClient.postNotification(ADB_PATH, device_id, {
           title,
           text: body,
-          tag:   args.tag   ?? 'aiphone',
+          tag: args.tag ?? 'aiphone',
           style: args.style ?? 'bigtext',
         });
         return text(`Notification posted on device ${device_id}: "${title}" — ${body}`);
@@ -1112,6 +1143,47 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         const device_id = args?.device_id ?? null;
         const output = await adbClient.adbShell(ADB_PATH, device_id, command);
         return text(output || '(no output)');
+      }
+
+      case 'long_press': {
+        const { x, y } = requireArgs(args, ['x', 'y']);
+        const device_id = args?.device_id ?? null;
+        const durationMs = args.duration_ms ?? 1000;
+        await adbClient.longPress(ADB_PATH, device_id, Number(x), Number(y), Number(durationMs));
+        return text(`Long-pressed at (${x}, ${y}) for ${durationMs}ms on device ${device_id}.`);
+      }
+
+      case 'clear_text': {
+        const device_id = args?.device_id ?? null;
+        await adbClient.clearText(ADB_PATH, device_id);
+        return text(`Cleared text in focused field on device ${device_id}.`);
+      }
+
+      case 'get_input_method': {
+        const device_id = args?.device_id ?? null;
+        const ime = await adbClient.getInputMethod(ADB_PATH, device_id);
+        return text(`Active input method on device ${device_id}: ${ime}`);
+      }
+
+      case 'set_input_method': {
+        const { ime } = requireArgs(args, ['ime']);
+        const device_id = args?.device_id ?? null;
+        await adbClient.setInputMethod(ADB_PATH, device_id, String(ime));
+        return text(`Input method set to "${ime}" on device ${device_id}.`);
+      }
+
+      case 'is_connected': {
+        const device_id = args?.device_id ?? null;
+        const connected = await adbClient.isConnected(ADB_PATH, device_id);
+        if (device_id) {
+          return text(`Device "${device_id}" is ${connected ? 'CONNECTED' : 'NOT connected'}.`);
+        }
+        return text(`ADB: ${connected ? 'At least one device is connected.' : 'No devices connected.'}`);
+      }
+
+      case 'restart_adb_server': {
+        await adbClient.restartAdbServer(ADB_PATH);
+        return text('ADB server restarted (kill-server + start-server).');
       }
 
       default:

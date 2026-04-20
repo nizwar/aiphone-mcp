@@ -521,3 +521,42 @@ export async function adbShell(adbPath, serial, command) {
   const output = await adbRun(adbPath, [...serialArgs(serial), 'shell', ...parts]);
   return output;
 }
+
+export async function longPress(adbPath, serial, x, y, durationMs = 1000) {
+  validateSerial(serial);
+  await adbRun(adbPath, [
+    ...serialArgs(serial), 'shell', 'input', 'swipe',
+    String(x), String(y), String(x), String(y), String(durationMs),
+  ]);
+}
+
+export async function clearText(adbPath, serial) {
+  validateSerial(serial);
+  await adbRun(adbPath, [...serialArgs(serial), 'shell', 'input', 'keyevent', '277']); // KEYCODE_CTRL_A
+  await adbRun(adbPath, [...serialArgs(serial), 'shell', 'input', 'keyevent', '67']);  // KEYCODE_DEL
+}
+
+export async function getInputMethod(adbPath, serial) {
+  validateSerial(serial);
+  const output = await adbRun(adbPath, [
+    ...serialArgs(serial), 'shell', 'settings', 'get', 'secure', 'default_input_method',
+  ]);
+  return output.trim();
+}
+
+export async function setInputMethod(adbPath, serial, ime) {
+  validateSerial(serial);
+  if (!ime || !ime.trim()) throw new Error('ime is required');
+  await adbRun(adbPath, [...serialArgs(serial), 'shell', 'ime', 'set', ime.trim()]);
+}
+
+export async function isConnected(adbPath, deviceId) {
+  const serials = await listDevices(adbPath);
+  if (!deviceId) return serials.length > 0;
+  return serials.includes(deviceId);
+}
+
+export async function restartAdbServer(adbPath) {
+  await adbRun(adbPath, ['kill-server']).catch(() => {});
+  await adbRun(adbPath, ['start-server']);
+}

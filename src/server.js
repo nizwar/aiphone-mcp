@@ -1,3 +1,4 @@
+import { createRequire } from 'module';
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import {
@@ -9,11 +10,12 @@ import * as adbClient from './adb.js';
 import { parseUiXml, compactElements, findElement } from './uiparser.js';
 import { processScreenshot, mimeType } from './image.js';
 
+const { version } = createRequire(import.meta.url)('../package.json');
 
 const ADB_PATH = process.env.AIPHONE_ADB_PATH || 'adb';
 
 const server = new Server(
-  { name: 'aiphone-mcp', version: '1.0.0' },
+  { name: 'aiphone-mcp', version },
   { capabilities: { tools: {} } },
 );
 
@@ -761,17 +763,22 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           quality: args.quality ?? 75,
         });
         const b64 = result.buffer.toString('base64');
-        const saved = Math.round((1 - result.buffer.length / result.originalBytes) * 100);
+        const sizeLine = result.fallback
+          ? `${(result.buffer.length / 1024).toFixed(1)} KB (raw PNG — install sharp for WebP compression and resizing)`
+          : (() => {
+              const saved = Math.round((1 - result.buffer.length / result.originalBytes) * 100);
+              return (
+                `${result.width}x${result.height}px, ` +
+                `${result.format}, ` +
+                `${(result.buffer.length / 1024).toFixed(1)} KB ` +
+                `(${saved}% smaller than raw PNG of ${(result.originalBytes / 1024).toFixed(1)} KB)`
+              );
+            })();
         return {
           content: [
             {
               type: 'text',
-              text:
-                `Screenshot from device ${device_id}: ` +
-                `${result.width}x${result.height}px, ` +
-                `${result.format}, ` +
-                `${(result.buffer.length / 1024).toFixed(1)} KB ` +
-                `(${saved}% smaller than raw PNG of ${(result.originalBytes / 1024).toFixed(1)} KB).`,
+              text: `Screenshot from device ${device_id}: ${sizeLine}.`,
             },
             { type: 'image', data: b64, mimeType: mimeType(result.format) },
           ],
@@ -1214,4 +1221,7 @@ function requireArgs(args, keys) {
 
 
 const transport = new StdioServerTransport();
-await server.connect(transport);
+await server.connect(transport).catch((err) => {
+  process.stderr.write(`[aiphone-mcp] Failed to start: ${err.message}\n`);
+  process.exit(1);
+});

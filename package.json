@@ -1,6 +1,6 @@
 {
   "name": "aiphone-mcp",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "MCP server for AI-powered Android device control via ADB — aiphone project",
   "type": "module",
   "bin": {
@@ -20,6 +20,10 @@
   },
   "engines": {
     "node": ">=18"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/nizwar/aiphone-mcp.git"
   },
   "license": "MIT",
   "author": "Mochamad Nizwar Syafuan",

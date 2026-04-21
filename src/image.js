@@ -1,8 +1,17 @@
 
-import sharp from 'sharp';
+// sharp is an optional native dependency — load it dynamically so the package
+// works via `npx` even on platforms where the prebuilt binary is unavailable.
+let sharp = null;
+try {
+  sharp = (await import('sharp')).default;
+} catch {
+  // Native module unavailable; processScreenshot will fall back to raw PNG.
+}
 
 /**
  * Resizes and compresses a raw image buffer.
+ * Requires the optional `sharp` native module for WebP/JPEG output and resizing.
+ * Falls back to returning the raw PNG buffer when sharp is not available.
  *
  * @param {Buffer} inputBuffer  - Raw image bytes (PNG from screencap)
  * @param {object} opts
@@ -10,18 +19,29 @@ import sharp from 'sharp';
  * @param {number} [opts.maxHeight=1920]    - Maximum output height in pixels
  * @param {string} [opts.format='webp']     - Output format: 'webp' | 'jpeg' | 'png'
  * @param {number} [opts.quality=75]        - Compression quality 1–100 (ignored for png)
- * @returns {Promise<{ buffer: Buffer, format: string, width: number, height: number, originalBytes: number }>}
+ * @returns {Promise<{ buffer: Buffer, format: string, width: number|null, height: number|null, originalBytes: number, fallback: boolean }>}
  */
 export async function processScreenshot(inputBuffer, opts = {}) {
+  const originalBytes = inputBuffer.length;
+
+  // Fallback path: sharp not available, return raw PNG unchanged.
+  if (!sharp) {
+    return {
+      buffer: inputBuffer,
+      format: 'png',
+      width: null,
+      height: null,
+      originalBytes,
+      fallback: true,
+    };
+  }
+
   const maxWidth = Math.max(1, Math.min(4096, Math.floor(opts.maxWidth ?? 1080)));
   const maxHeight = Math.max(1, Math.min(4096, Math.floor(opts.maxHeight ?? 1920)));
   const quality = Math.max(1, Math.min(100, Math.floor(opts.quality ?? 75)));
   const format = validateFormat(opts.format ?? 'webp');
 
-  const originalBytes = inputBuffer.length;
-
   let pipeline = sharp(inputBuffer, { failOn: 'none' }).rotate();
-
 
   pipeline = pipeline.resize(maxWidth, maxHeight, {
     fit: 'inside',
@@ -37,7 +57,6 @@ export async function processScreenshot(inputBuffer, opts = {}) {
       pipeline = pipeline.jpeg({ quality, mozjpeg: true });
       break;
     case 'png':
-
       pipeline = pipeline.png({ compressionLevel: Math.round((100 - quality) / 11) });
       break;
   }
@@ -50,6 +69,7 @@ export async function processScreenshot(inputBuffer, opts = {}) {
     width: info.width,
     height: info.height,
     originalBytes,
+    fallback: false,
   };
 }
 
